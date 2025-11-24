@@ -1,0 +1,2406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Algarrobo | Plataforma de Datos Geoespaciales</title>
+
+    <!-- Leaflet CSS (Biblioteca para el mapa) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+     
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- Variables de Diseño (Paleta de Colores Municipalidad de Algarrobo) --- */
+        :root {
+            --primary-color: #007B5E;
+            --secondary-color: #006644;
+            --accent-color: #005C4A;
+            --text-color: #333333;
+            --light-gray: #F0F0F0;
+            --dark-gray: #444444;
+            --white: #FFFFFF;
+            --alert-color: #C70039;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            --transition: all 0.3s ease;
+        }
+
+        /* --- Estilos Generales y Reset --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--white);
+            transition: var(--transition);
+        }
+
+        body.dark-mode {
+            --primary-color: #00A07A;
+            --secondary-color: #007B5E;
+            --accent-color: #005C4A;
+            --text-color: #E0E0E0;
+            --light-gray: #1E1E1E;
+            --dark-gray: #CCCCCC;
+            --white: #121212;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--primary-color);
+            transition: var(--transition);
+        }
+
+        a:hover {
+            color: var(--secondary-color);
+        }
+
+        /* --- Header y Navegación --- */
+        .main-header {
+            background-color: var(--white);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            width: 100%;
+        }
+
+        .main-header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 20px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo i {
+            margin-right: 10px;
+        }
+
+        .main-nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        .main-nav ul li {
+            margin-left: 25px;
+        }
+
+        .main-nav a {
+            font-weight: 500;
+            color: var(--dark-gray);
+            font-size: 1rem;
+        }
+        
+        .main-nav a:hover {
+            color: var(--primary-color);
+        }
+
+        .menu-toggle {
+            display: none; /* Oculto en escritorio */
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary-color);
+        }
+
+        /* --- Breadcrumbs de navegación --- */
+        .breadcrumbs {
+            background-color: var(--light-gray);
+            padding: 0.75rem 0;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumbs ul {
+            display: flex;
+            list-style: none;
+            flex-wrap: wrap;
+        }
+
+        .breadcrumbs li {
+            margin-right: 10px;
+        }
+
+        .breadcrumbs li:not(:last-child)::after {
+            content: ">";
+            margin-left: 10px;
+            color: var(--dark-gray);
+        }
+
+        /* --- Sección Hero con Mapa --- */
+        .hero-map-section {
+            position: relative;
+            height: 70vh; /* 70% de la altura de la ventana */
+            width: 100%;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--white);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4); /* Fondo semitransparente */
+            z-index: 2;
+            pointer-events: none; /* Permite hacer clic en el mapa a través del overlay */
+            transition: transform 0.5s ease;
+        }
+
+        .hero-overlay h1 {
+            font-size: 3.5rem;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+
+        .hero-overlay p {
+            font-size: 1.2rem;
+            max-width: 600px;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+        }
+
+        /* --- Controles del Mapa --- */
+        .map-controls {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            padding: 15px;
+            width: 220px;
+        }
+
+        .map-controls h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .map-control-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .map-control-item input {
+            margin-right: 8px;
+        }
+
+        .map-control-item label {
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            width: 300px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            font-size: 0.9rem;
+            background-color: var(--white);
+            color: var(--text-color);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            margin-top: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .search-result-item:hover {
+            background-color: var(--light-gray);
+        }
+
+        .map-tools {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .map-tool-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--white);
+            border: none;
+            box-shadow: var(--card-shadow);
+            color: var(--primary-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .map-tool-btn:hover {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .map-tool-btn.active {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        /* --- Sección de Estadísticas --- */
+        .stats-section {
+            padding: 4rem 0;
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+            margin: 1rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        /* --- Sección de Aplicaciones / Tarjetas --- */
+        .apps-section {
+            padding: 4rem 0;
+            background-color: var(--light-gray);
+        }
+
+        .apps-section .container h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 3rem;
+        }
+
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            padding: 8px 15px;
+            border: 1px solid var(--primary-color);
+            background-color: transparent;
+            color: var(--primary-color);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .card-image-container {
+            position: relative;
+            overflow: hidden;
+            height: 200px;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .card:hover img {
+            transform: scale(1.05);
+        }
+
+        .card-image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, transparent 0%, rgba(0,123,94,0.8) 100%);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .card:hover .card-image-overlay {
+            opacity: 1;
+        }
+
+        .card-favorite {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--white);
+            color: var(--alert-color);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .card-favorite:hover {
+            transform: scale(1.1);
+        }
+
+        .card-favorite.active {
+            color: var(--alert-color);
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-content h3 {
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .card-content p {
+            margin: 1rem 0;
+            color: var(--dark-gray);
+            flex-grow: 1;
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-weight: 600;
+            text-align: center;
+            align-self: flex-start;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background-color: var(--secondary-color);
+            color: var(--white);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.5);
+            transform: scale(0);
+            animation: ripple 0.6s ease-out;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* --- Comparador de Mapas --- */
+        .compare-section {
+            padding: 4rem 0;
+            background-color: var(--white);
+        }
+
+        .compare-container {
+            position: relative;
+            height: 500px;
+            margin-top: 2rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+
+        .compare-map {
+            position: absolute;
+            top: 0;
+            width: 50%;
+            height: 100%;
+        }
+
+        #compare-map-1 {
+            left: 0;
+        }
+
+        #compare-map-2 {
+            right: 0;
+        }
+
+        .compare-slider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            background-color: var(--primary-color);
+            cursor: ew-resize;
+            z-index: 10;
+        }
+
+        .compare-slider-handle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            box-shadow: var(--card-shadow);
+        }
+
+        /* --- Panel de Favoritos --- */
+        .favorites-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100%;
+            background-color: var(--white);
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            z-index: 1001;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .favorites-panel.active {
+            right: 0;
+        }
+
+        .favorites-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .favorites-close {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .favorites-content {
+            padding: 1.5rem;
+        }
+
+        .favorite-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .favorite-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 1rem;
+        }
+
+        .favorite-item-content {
+            flex-grow: 1;
+        }
+
+        .favorite-item-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--primary-color);
+        }
+
+        .favorite-item-description {
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+        }
+
+        /* --- Formulario de Reporte --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1002;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            background-color: var(--primary-color);
+            color: var(--white);
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark-gray);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 5px;
+            background-color: var(--white);
+            color: var(--text-color);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .map-screenshot {
+            width: 100%;
+            height: 200px;
+            background-color: var(--light-gray);
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--dark-gray);
+        }
+
+        /* --- Atajos de Teclado --- */
+        .shortcuts-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1002;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shortcuts-modal.active {
+            display: flex;
+        }
+
+        .shortcuts-content {
+            background-color: var(--white);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .shortcuts-header {
+            padding: 1.5rem;
+            background-color: var(--primary-color);
+            color: var(--white);
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shortcuts-close {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .shortcuts-body {
+            padding: 1.5rem;
+        }
+
+        .shortcuts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .shortcuts-table th,
+        .shortcuts-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .shortcuts-table th {
+            background-color: var(--light-gray);
+            font-weight: 600;
+        }
+
+        .shortcut-key {
+            display: inline-block;
+            background-color: var(--light-gray);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        /* --- Footer --- */
+        .main-footer {
+            background-color: var(--secondary-color);
+            color: var(--light-gray);
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .main-footer p {
+            margin: 0;
+        }
+        
+        .main-footer a {
+            color: var(--white);
+        }
+
+        .footer-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 1rem;
+        }
+
+        .footer-btn {
+            background: none;
+            border: 1px solid var(--white);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .footer-btn:hover {
+            background-color: var(--white);
+            color: var(--secondary-color);
+        }
+
+        /* --- Skeleton Loading --- */
+        .skeleton {
+            background: linear-gradient(90deg, var(--light-gray) 25%, rgba(0, 0, 0, 0.05) 50%, var(--light-gray) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-card {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-img {
+            height: 200px;
+            width: 100%;
+        }
+
+        .skeleton-content {
+            padding: 1.5rem;
+        }
+
+        .skeleton-title {
+            height: 24px;
+            width: 60%;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-text {
+            height: 16px;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .skeleton-text:last-child {
+            width: 80%;
+        }
+
+        /* --- Tooltips --- */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.8);
+            color: var(--white);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip::before {
+            content: "";
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(0,0,0,0.8) transparent transparent transparent;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover::after,
+        .tooltip:hover::before {
+            opacity: 1;
+        }
+
+        /* --- Modo Oscuro Toggle --- */
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 15px;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            color: var(--secondary-color);
+        }
+
+        /* --- Diseño Responsivo (Mobile) --- */
+        @media (max-width: 768px) {
+            .main-header .container {
+                flex-wrap: wrap;
+            }
+
+            .main-nav {
+                width: 100%;
+                display: none; /* Oculto por defecto */
+            }
+
+            .main-nav.active {
+                display: block; /* Se muestra al hacer clic */
+            }
+
+            .main-nav ul {
+                flex-direction: column;
+                text-align: center;
+                margin-top: 1rem;
+            }
+
+            .main-nav ul li {
+                margin: 10px 0;
+            }
+
+            .menu-toggle {
+                display: block; /* Se muestra el icono de menú */
+            }
+
+            .hero-overlay h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-overlay p {
+                font-size: 1rem;
+            }
+
+            .search-container {
+                width: calc(100% - 40px);
+            }
+
+            .map-controls {
+                width: calc(100% - 40px);
+                right: 20px;
+                left: 20px;
+            }
+
+            .stats-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .compare-container {
+                height: 300px;
+            }
+
+            .favorites-panel {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== HEADER ==================== -->
+    <header class="main-header">
+        <div class="container">
+            <a href="#" class="logo">
+                <i class="fas fa-map-marked-alt"></i>
+                Geoportal Algarrobo
+            </a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#" data-page="inicio">Inicio</a></li>
+                    <li><a href="#" data-page="mapas">Mapas</a></li>
+                    <li><a href="#" data-page="datos">Datos</a></li>
+                    <li><a href="#" data-page="aplicaciones">Aplicaciones</a></li>
+                    <li><a href="#" data-page="acerca">Acerca de</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <button class="theme-toggle tooltip" data-tooltip="Cambiar tema">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div class="menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== BREADCRUMBS ==================== -->
+    <section class="breadcrumbs">
+        <div class="container">
+            <ul>
+                <li><a href="#">Inicio</a></li>
+                <li id="current-page">Mapas</li>
+            </ul>
+        </div>
+    </section>
+
+    <main>
+        <!-- ==================== SECCIÓN HERO CON MAPA ==================== -->
+        <section class="hero-map-section">
+            <div id="map"></div>
+            <div class="hero-overlay">
+                <h1>Geoportal Municipalidad de Algarrobo</h1>
+                <p>Explora, visualiza y descarga los mapas y datos geográficos de nuestra comuna.</p>
+            </div>
+
+            <!-- Búsqueda Geográfica -->
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Buscar lugares en Algarrobo...">
+                <div class="search-results">
+                    <!-- Los resultados se agregarán dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Controles del Mapa -->
+            <div class="map-controls">
+                <h3>Capas Temáticas</h3>
+                <div class="map-control-item">
+                    <input type="checkbox" id="layer-uso-suelo" checked>
+                    <label for="layer-uso-suelo">Uso de Suelo</label>
+                </div>
+                <div class="map-control-item">
+                    <input type="checkbox" id="layer-limites" checked>
+                    <label for="layer-limites">Límites y Sectores</label>
+                </div>
+                <div class="map-control-item">
+                    <input type="checkbox" id="layer-infraestructura" checked>
+                    <label for="layer-infraestructura">Infraestructura Vial</label>
+                </div>
+                <div class="map-control-item">
+                    <input type="checkbox" id="layer-playas" checked>
+                    <label for="layer-playas">Playas y Áreas de Recreación</label>
+                </div>
+                <div class="map-control-item">
+                    <input type="checkbox" id="layer-transporte" checked>
+                    <label for="layer-transporte">Rutas de Transporte Público</label>
+                </div>
+                <div class="map-control-item">
+                    <input type="checkbox" id="layer-turismo" checked>
+                    <label for="layer-turismo">Puntos de Interés Turístico</label>
+                </div>
+            </div>
+
+            <!-- Herramientas del Mapa -->
+            <div class="map-tools">
+                <button class="map-tool-btn tooltip" id="btn-location" data-tooltip="Mi ubicación">
+                    <i class="fas fa-crosshairs"></i>
+                </button>
+                <button class="map-tool-btn tooltip" id="btn-distance" data-tooltip="Medir distancia">
+                    <i class="fas fa-ruler"></i>
+                </button>
+                <button class="map-tool-btn tooltip" id="btn-compare" data-tooltip="Comparar mapas">
+                    <i class="fas fa-columns"></i>
+                </button>
+                <button class="map-tool-btn tooltip" id="btn-export" data-tooltip="Exportar datos">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE ESTADÍSTICAS ==================== -->
+        <section class="stats-section">
+            <div class="container">
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="305">0</div>
+                        <div class="stat-label">km² Mapeados</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="42">0</div>
+                        <div class="stat-label">Capas Disponibles</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="1287">0</div>
+                        <div class="stat-label">Usuarios Activos</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="156">0</div>
+                        <div class="stat-label">Descargas Mensuales</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE APLICACIONES ==================== -->
+        <section class="apps-section">
+            <div class="container">
+                <h2>Aplicaciones y Mapas Temáticos de Algarrobo</h2>
+                
+                <!-- Filtros -->
+                <div class="filter-container">
+                    <button class="filter-btn active" data-filter="all">Todos</button>
+                    <button class="filter-btn" data-filter="infraestructura">Infraestructura</button>
+                    <button class="filter-btn" data-filter="medio-ambiente">Medio Ambiente</button>
+                    <button class="filter-btn" data-filter="seguridad">Seguridad</button>
+                    <button class="filter-btn" data-filter="turismo">Turismo</button>
+                </div>
+
+                <!-- Skeleton Loading (inicialmente visible) -->
+                <div class="skeleton-loading">
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton-img"></div>
+                        <div class="skeleton-content">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid de Tarjetas (inicialmente oculto) -->
+                <div class="card-grid" style="display: none;">
+                    <!-- Tarjeta 1 -->
+                    <div class="card" data-category="infraestructura">
+                        <div class="card-image-container">
+                            <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Uso de Suelo">
+                            <div class="card-image-overlay"></div>
+                            <div class="card-favorite" data-id="1">
+                                <i class="far fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Uso de Suelo</h3>
+                            <p>Visualiza las diferentes zonas de uso de suelo (residencial, comercial, turístico) en la comuna de Algarrobo.</p>
+                            <div class="card-actions">
+                                <a href="#" class="btn">Explorar Mapa</a>
+                                <button class="btn btn-secondary export-btn" data-id="1">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 2 -->
+                    <div class="card" data-category="infraestructura">
+                        <div class="card-image-container">
+                            <img src="https://images.unsplash.com/photo-1593696140826-c58b021acf8b?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Límites Comunales">
+                            <div class="card-image-overlay"></div>
+                            <div class="card-favorite" data-id="2">
+                                <i class="far fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Límites y Sectores</h3>
+                            <p>Explora los límites comunales, barrios y sectores de Algarrobo, incluyendo Mirasol, Puntalarga y el sector centro.</p>
+                            <div class="card-actions">
+                                <a href="#" class="btn">Explorar Mapa</a>
+                                <button class="btn btn-secondary export-btn" data-id="2">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 3 -->
+                    <div class="card" data-category="infraestructura">
+                        <div class="card-image-container">
+                            <img src="https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Infraestructura Vial">
+                            <div class="card-image-overlay"></div>
+                            <div class="card-favorite" data-id="3">
+                                <i class="far fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Infraestructura Vial</h3>
+                            <p>Información detallada sobre las principales vías, avenidas y el estado de las carreteras de acceso a Algarrobo.</p>
+                            <div class="card-actions">
+                                <a href="#" class="btn">Explorar Mapa</a>
+                                <button class="btn btn-secondary export-btn" data-id="3">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 4 -->
+                    <div class="card" data-category="medio-ambiente">
+                        <div class="card-image-container">
+                            <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Playas">
+                            <div class="card-image-overlay"></div>
+                            <div class="card-favorite" data-id="4">
+                                <i class="far fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Playas y Áreas de Recreación</h3>
+                            <p>Localiza las principales playas de Algarrobo como El Canelo, Las Brisas, y el sector de Punta de Tralca.</p>
+                            <div class="card-actions">
+                                <a href="#" class="btn">Explorar Mapa</a>
+                                <button class="btn btn-secondary export-btn" data-id="4">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 5 -->
+                    <div class="card" data-category="infraestructura">
+                        <div class="card-image-container">
+                            <img src="https://images.unsplash.com/photo-1590650213538-0b8d5b2c79d5?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Transporte Público">
+                            <div class="card-image-overlay"></div>
+                            <div class="card-favorite" data-id="5">
+                                <i class="far fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Rutas de Transporte Público</h3>
+                            <p>Consulta las rutas de autobuses, paradas y horarios del sistema de transporte público que conecta Algarrobo con Santiago.</p>
+                            <div class="card-actions">
+                                <a href="#" class="btn">Explorar Mapa</a>
+                                <button class="btn btn-secondary export-btn" data-id="5">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                     <!-- Tarjeta 6 -->
+                    <div class="card" data-category="turismo">
+                        <div class="card-image-container">
+                            <img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Turismo">
+                            <div class="card-image-overlay"></div>
+                            <div class="card-favorite" data-id="6">
+                                <i class="far fa-heart"></i>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <h3>Puntos de Interés Turístico</h3>
+                            <p>Descubre los principales atractivos turísticos de Algarrobo, incluyendo restaurantes, hoteles y el Yacht Club.</p>
+                            <div class="card-actions">
+                                <a href="#" class="btn">Explorar Mapa</a>
+                                <button class="btn btn-secondary export-btn" data-id="6">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN COMPARADOR DE MAPAS ==================== -->
+        <section class="compare-section" id="compare-section" style="display: none;">
+            <div class="container">
+                <h2>Comparador de Mapas</h2>
+                <p>Compara diferentes capas o períodos de tiempo de manera interactiva.</p>
+                
+                <div class="compare-container">
+                    <div id="compare-map-1" class="compare-map"></div>
+                    <div id="compare-map-2" class="compare-map"></div>
+                    <div class="compare-slider">
+                        <div class="compare-slider-handle">
+                            <i class="fas fa-arrows-alt-h"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== PANEL DE FAVORITOS ==================== -->
+    <div class="favorites-panel" id="favorites-panel">
+        <div class="favorites-header">
+            <h3>Mis Mapas Favoritos</h3>
+            <button class="favorites-close" id="favorites-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="favorites-content" id="favorites-content">
+            <p>No tienes mapas favoritos guardados.</p>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DE REPORTE DE ERRORES ==================== -->
+    <div class="modal" id="report-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Reportar Error en el Mapa</h3>
+                <button class="modal-close" id="report-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="map-screenshot" id="map-screenshot">
+                    <i class="fas fa-camera"></i> Captura de pantalla del mapa
+                </div>
+                
+                <div class="form-group">
+                    <label for="report-category">Categoría del Error</label>
+                    <select id="report-category">
+                        <option value="">Selecciona una categoría</option>
+                        <option value="datos-incorrectos">Datos incorrectos</option>
+                        <option value="informacion-faltante">Información faltante</option>
+                        <option value="error-visual">Error visual</option>
+                        <option value="problema-funcionalidad">Problema de funcionalidad</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="report-description">Descripción del Problema</label>
+                    <textarea id="report-description" placeholder="Describe detalladamente el problema que encontraste..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="report-location">Ubicación (coordenadas)</label>
+                    <input type="text" id="report-location" placeholder="-33.3549, -71.6559">
+                </div>
+                
+                <button class="btn" id="submit-report">Enviar Reporte</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DE ATAJOS DE TECLADO ==================== -->
+    <div class="shortcuts-modal" id="shortcuts-modal">
+        <div class="shortcuts-content">
+            <div class="shortcuts-header">
+                <h3>Atajos de Teclado</h3>
+                <button class="shortcuts-close" id="shortcuts-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="shortcuts-body">
+                <table class="shortcuts-table">
+                    <thead>
+                        <tr>
+                            <th>Atajo</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="shortcut-key">M</span></td>
+                            <td>Ir al mapa</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">D</span></td>
+                            <td>Ir a la sección de datos</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">/</span></td>
+                            <td>Activar búsqueda</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">F</span></td>
+                            <td>Abrir panel de favoritos</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">C</span></td>
+                            <td>Activar comparador de mapas</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">T</span></td>
+                            <td>Cambiar tema (claro/oscuro)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">R</span></td>
+                            <td>Abrir formulario de reporte</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">?</span></td>
+                            <td>Mostrar esta ayuda</td>
+                        </tr>
+                        <tr>
+                            <td><span class="shortcut-key">Esc</span></td>
+                            <td>Cerrar modales</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2024 Geoportal Algarrobo. Municipalidad de Algarrobo, Chile. Todos los derechos reservados. Desarrollado con <i class="fas fa-heart" style="color: var(--accent-color);"></i> usando <a href="https://leafletjs.com/" target="_blank">Leaflet</a>.</p>
+            <div class="footer-actions">
+                <button class="footer-btn" id="footer-favorites">
+                    <i class="fas fa-star"></i> Mis Favoritos
+                </button>
+                <button class="footer-btn" id="footer-report">
+                    <i class="fas fa-bug"></i> Reportar Error
+                </button>
+                <button class="footer-btn" id="footer-shortcuts">
+                    <i class="fas fa-keyboard"></i> Atajos
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS (Biblioteca para el mapa) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+     
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <!-- Script para inicializar el mapa y la funcionalidad -->
+    <script>
+        // --- VARIABLES GLOBALES ---
+        let map;
+        let compareMap1, compareMap2;
+        let measureMode = false;
+        let measurePoints = [];
+        let measureLine;
+        let isDragging = false;
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+        
+        // --- INICIALIZACIÓN DEL MAPA ---
+        // Coordenadas iniciales y nivel de zoom (Algarrobo, Chile)
+        map = L.map('map').setView([-33.3549, -71.6559], 13);
+
+        // Capa de mapa base de OpenStreetMap
+        const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Capa de mapa base para modo oscuro
+        const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        // --- EJEMPLO DE MARCADORES Y CLUSTERS ---
+        // Crear un grupo de clusters
+        const markers = L.markerClusterGroup({
+            iconCreateFunction: function(cluster) {
+                return L.divIcon({
+                    html: '<div style="background-color: var(--primary-color); color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold;">' + cluster.getChildCount() + '</div>',
+                    className: 'custom-cluster-icon',
+                    iconSize: L.point(30, 30)
+                });
+            }
+        });
+
+        // Agregar algunos marcadores de ejemplo
+        const locations = [
+            {lat: -33.3563, lng: -71.6529, title: "Plaza de Armas de Algarrobo", description: "Centro cívico de la comuna."},
+            {lat: -33.3570, lng: -71.6540, title: "Municipalidad de Algarrobo", description: "Edificio municipal."},
+            {lat: -33.3540, lng: -71.6510, title: "Playa El Canelo", description: "Una de las playas más populares."},
+            {lat: -33.3520, lng: -71.6580, title: "Yacht Club de Algarrobo", description: "Club náutico de la comuna."},
+            {lat: -33.3590, lng: -71.6500, title: "Mirador Punta de Tralca", description: "Mirador con vistas panorámicas."},
+            {lat: -33.3530, lng: -71.6550, title: "Centro Comercial", description: "Principal centro de compras."},
+            {lat: -33.3550, lng: -71.6570, title: "Estación de Servicio", description: "Bencinera y servicios."},
+            {lat: -33.3510, lng: -71.6520, title: "Parque Municipal", description: "Área verde para recreación."}
+        ];
+
+        locations.forEach(loc => {
+            const marker = L.marker([loc.lat, loc.lng])
+                .bindPopup('<b>' + loc.title + '</b><br>' + loc.description);
+            markers.addLayer(marker);
+        });
+
+        map.addLayer(markers);
+
+        // --- POLÍGONO PARA DELIMITAR UN ÁREA ---
+        const polygon = L.polygon([
+            [-33.3500, -71.6600],
+            [-33.3500, -71.6400],
+            [-33.3700, -71.6400],
+            [-33.3700, -71.6600]
+        ]).addTo(map)
+        .bindPopup('Área central de Algarrobo.');
+
+        // --- CAPAS TEMÁTICAS ---
+        const layers = {
+            usoSuelo: L.layerGroup().addTo(map),
+            limites: L.layerGroup().addTo(map),
+            infraestructura: L.layerGroup().addTo(map),
+            playas: L.layerGroup().addTo(map),
+            transporte: L.layerGroup().addTo(map),
+            turismo: L.layerGroup().addTo(map)
+        };
+
+        // Agregar contenido a las capas (simulado)
+        // Capa de uso de suelo
+        const usoSueloPolygon = L.polygon([
+            [-33.3550, -71.6520],
+            [-33.3550, -71.6480],
+            [-33.3520, -71.6480],
+            [-33.3520, -71.6520]
+        ], {color: '#007B5E', fillOpacity: 0.3}).bindPopup('Zona Residencial');
+        layers.usoSuelo.addLayer(usoSueloPolygon);
+
+        // Capa de límites
+        const limitesPolyline = L.polyline([
+            [-33.3500, -71.6600],
+            [-33.3500, -71.6400],
+            [-33.3700, -71.6400],
+            [-33.3700, -71.6600],
+            [-33.3500, -71.6600]
+        ], {color: '#006644', weight: 3}).bindPopup('Límite comunal');
+        layers.limites.addLayer(limitesPolyline);
+
+        // Capa de infraestructura
+        const infraestructuraPolyline = L.polyline([
+            [-33.3560, -71.6530],
+            [-33.3540, -71.6520],
+            [-33.3520, -71.6510]
+        ], {color: '#005C4A', weight: 2}).bindPopup('Avenida Principal');
+        layers.infraestructura.addLayer(infraestructuraPolyline);
+
+        // Capa de playas
+        const playasPolygon = L.polygon([
+            [-33.3530, -71.6510],
+            [-33.3530, -71.6490],
+            [-33.3510, -71.6490],
+            [-33.3510, -71.6510]
+        ], {color: '#007B5E', fillOpacity: 0.3}).bindPopup('Playa El Canelo');
+        layers.playas.addLayer(playasPolygon);
+
+        // Capa de transporte
+        const transportePolyline = L.polyline([
+            [-33.3570, -71.6540],
+            [-33.3550, -71.6520],
+            [-33.3530, -71.6500]
+        ], {color: '#C70039', weight: 2, dashArray: '5, 5'}).bindPopup('Ruta de Bus 123');
+        layers.transporte.addLayer(transportePolyline);
+
+        // Capa de turismo
+        const turismoMarker = L.marker([-33.3540, -71.6510])
+            .bindPopup('<b>Playa El Canelo</b><br>Una de las playas más populares de Algarrobo.');
+        layers.turismo.addLayer(turismoMarker);
+
+        // --- FUNCIONALIDAD DEL MENÚ MÓVIL ---
+        const menuToggle = document.querySelector('.menu-toggle');
+        const mainNav = document.querySelector('.main-nav');
+
+        menuToggle.addEventListener('click', () => {
+            mainNav.classList.toggle('active');
+        });
+
+        // --- MODO OSCURO/CLARO ---
+        const themeToggle = document.querySelector('.theme-toggle');
+        const themeIcon = themeToggle.querySelector('i');
+        
+        // Verificar si hay un tema guardado en localStorage
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+            map.removeLayer(tileLayer);
+            map.addLayer(darkTileLayer);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            
+            if (document.body.classList.contains('dark-mode')) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+                localStorage.setItem('theme', 'dark');
+                map.removeLayer(tileLayer);
+                map.addLayer(darkTileLayer);
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+                localStorage.setItem('theme', 'light');
+                map.removeLayer(darkTileLayer);
+                map.addLayer(tileLayer);
+            }
+        });
+
+        // --- EFECTO PARALLAX EN EL HERO ---
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const heroOverlay = document.querySelector('.hero-overlay');
+            if (heroOverlay) {
+                heroOverlay.style.transform = `translateY(${scrolled * 0.5}px)`;
+            }
+        });
+
+        // --- CONTROL DE CAPAS TEMÁTICAS ---
+        document.getElementById('layer-uso-suelo').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(layers.usoSuelo);
+            } else {
+                map.removeLayer(layers.usoSuelo);
+            }
+        });
+
+        document.getElementById('layer-limites').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(layers.limites);
+            } else {
+                map.removeLayer(layers.limites);
+            }
+        });
+
+        document.getElementById('layer-infraestructura').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(layers.infraestructura);
+            } else {
+                map.removeLayer(layers.infraestructura);
+            }
+        });
+
+        document.getElementById('layer-playas').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(layers.playas);
+            } else {
+                map.removeLayer(layers.playas);
+            }
+        });
+
+        document.getElementById('layer-transporte').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(layers.transporte);
+            } else {
+                map.removeLayer(layers.transporte);
+            }
+        });
+
+        document.getElementById('layer-turismo').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(layers.turismo);
+            } else {
+                map.removeLayer(layers.turismo);
+            }
+        });
+
+        // --- BÚSQUEDA GEOGRÁFICA ---
+        const searchInput = document.querySelector('.search-input');
+        const searchResults = document.querySelector('.search-results');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            
+            if (query.length < 2) {
+                searchResults.classList.remove('active');
+                return;
+            }
+
+            // Simular búsqueda (en una aplicación real, se usaría una API)
+            const mockResults = [
+                {name: 'Plaza de Armas de Algarrobo', lat: -33.3563, lng: -71.6529},
+                {name: 'Playa El Canelo', lat: -33.3540, lng: -71.6510},
+                {name: 'Municipalidad de Algarrobo', lat: -33.3570, lng: -71.6540},
+                {name: 'Yacht Club de Algarrobo', lat: -33.3520, lng: -71.6580},
+                {name: 'Mirador Punta de Tralca', lat: -33.3590, lng: -71.6500}
+            ];
+
+            const filteredResults = mockResults.filter(result => 
+                result.name.toLowerCase().includes(query.toLowerCase())
+            );
+
+            // Limpiar resultados anteriores
+            searchResults.innerHTML = '';
+
+            // Agregar nuevos resultados
+            filteredResults.forEach(result => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'search-result-item';
+                resultItem.textContent = result.name;
+                resultItem.addEventListener('click', () => {
+                    map.flyTo([result.lat, result.lng], 16, {
+                        duration: 2
+                    });
+                    
+                    // Agregar marcador temporal
+                    L.marker([result.lat, result.lng])
+                        .addTo(map)
+                        .bindPopup(result.name)
+                        .openPopup();
+                    
+                    searchResults.classList.remove('active');
+                    searchInput.value = '';
+                });
+                searchResults.appendChild(resultItem);
+            });
+
+            searchResults.classList.add('active');
+        });
+
+        // Cerrar resultados al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        // --- GEOLOCALIZACIÓN DEL USUARIO ---
+        document.getElementById('btn-location').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Centrar el mapa en la ubicación del usuario
+                    map.flyTo([lat, lng], 15, {
+                        duration: 2
+                    });
+                    
+                    // Crear un marcador especial para la ubicación del usuario
+                    const userIcon = L.divIcon({
+                        html: '<div style="background-color: #007B5E; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></div>',
+                        className: 'user-location-marker',
+                        iconSize: [20, 20]
+                    });
+                    
+                    L.marker([lat, lng], {icon: userIcon})
+                        .addTo(map)
+                        .bindPopup('Tu ubicación actual')
+                        .openPopup();
+                }, (error) => {
+                    alert('No se pudo obtener tu ubicación: ' + error.message);
+                });
+            } else {
+                alert('Tu navegador no soporta geolocalización');
+            }
+        });
+
+        // --- MEDIDOR DE DISTANCIA ---
+        document.getElementById('btn-distance').addEventListener('click', () => {
+            measureMode = !measureMode;
+            document.getElementById('btn-distance').classList.toggle('active');
+            
+            if (!measureMode) {
+                // Limpiar mediciones anteriores
+                if (measureLine) {
+                    map.removeLayer(measureLine);
+                }
+                measurePoints.forEach(point => {
+                    map.removeLayer(point);
+                });
+                measurePoints = [];
+            }
+        });
+
+        map.on('click', (e) => {
+            if (measureMode) {
+                const latlng = e.latlng;
+                
+                // Agregar marcador de punto
+                const pointMarker = L.circleMarker(latlng, {
+                    radius: 5,
+                    fillColor: '#007B5E',
+                    color: '#fff',
+                    weight: 2,
+                    fillOpacity: 1
+                }).addTo(map);
+                
+                measurePoints.push(pointMarker);
+                
+                if (measurePoints.length > 1) {
+                    // Si ya hay puntos, crear o actualizar la línea
+                    if (measureLine) {
+                        map.removeLayer(measureLine);
+                    }
+                    
+                    const latlngs = measurePoints.map(point => point.getLatLng());
+                    measureLine = L.polyline(latlngs, {
+                        color: '#007B5E',
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '10, 10'
+                    }).addTo(map);
+                    
+                    // Calcular distancia total
+                    let totalDistance = 0;
+                    for (let i = 0; i < latlngs.length - 1; i++) {
+                        totalDistance += latlngs[i].distanceTo(latlngs[i + 1]);
+                    }
+                    
+                    // Mostrar distancia en metros o kilómetros
+                    let distanceText;
+                    if (totalDistance < 1000) {
+                        distanceText = Math.round(totalDistance) + ' m';
+                    } else {
+                        distanceText = (totalDistance / 1000).toFixed(2) + ' km';
+                    }
+                    
+                    // Agregar popup con la distancia
+                    const lastPoint = latlngs[latlngs.length - 1];
+                    L.popup()
+                        .setLatLng(lastPoint)
+                        .setContent('Distancia total: ' + distanceText)
+                        .openOn(map);
+                }
+            }
+        });
+
+        // --- COMPARADOR DE MAPAS ---
+        document.getElementById('btn-compare').addEventListener('click', () => {
+            const compareSection = document.getElementById('compare-section');
+            compareSection.style.display = compareSection.style.display === 'none' ? 'block' : 'none';
+            
+            if (compareSection.style.display === 'block') {
+                // Inicializar los mapas del comparador si no están inicializados
+                if (!compareMap1) {
+                    compareMap1 = L.map('compare-map-1').setView([-33.3549, -71.6559], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(compareMap1);
+                    
+                    compareMap2 = L.map('compare-map-2').setView([-33.3549, -71.6559], 13);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                        subdomains: 'abcd',
+                        maxZoom: 19
+                    }).addTo(compareMap2);
+                    
+                    // Sincronizar los mapas
+                    compareMap1.sync(compareMap2);
+                    compareMap2.sync(compareMap1);
+                    
+                    // Agregar las mismas capas a ambos mapas
+                    L.marker([-33.3563, -71.6529]).addTo(compareMap1).bindPopup('Plaza de Armas de Algarrobo');
+                    L.marker([-33.3563, -71.6529]).addTo(compareMap2).bindPopup('Plaza de Armas de Algarrobo');
+                    
+                    // Implementar el slider
+                    const compareContainer = document.querySelector('.compare-container');
+                    const compareSlider = document.querySelector('.compare-slider');
+                    const sliderHandle = document.querySelector('.compare-slider-handle');
+                    
+                    sliderHandle.addEventListener('mousedown', (e) => {
+                        isDragging = true;
+                        document.body.style.cursor = 'ew-resize';
+                    });
+                    
+                    document.addEventListener('mousemove', (e) => {
+                        if (!isDragging) return;
+                        
+                        const rect = compareContainer.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const percentage = (x / rect.width) * 100;
+                        
+                        if (percentage > 5 && percentage < 95) {
+                            compareSlider.style.left = percentage + '%';
+                            document.getElementById('compare-map-1').style.width = percentage + '%';
+                        }
+                    });
+                    
+                    document.addEventListener('mouseup', () => {
+                        isDragging = false;
+                        document.body.style.cursor = 'default';
+                    });
+                }
+                
+                // Desplazarse a la sección del comparador
+                compareSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        // --- EXPORTACIÓN DE DATOS ---
+        document.getElementById('btn-export').addEventListener('click', () => {
+            // Crear un menú de exportación
+            const exportMenu = document.createElement('div');
+            exportMenu.style.position = 'absolute';
+            exportMenu.style.bottom = '60px';
+            exportMenu.style.right = '0';
+            exportMenu.style.backgroundColor = 'var(--white)';
+            exportMenu.style.borderRadius = '8px';
+            exportMenu.style.boxShadow = 'var(--card-shadow)';
+            exportMenu.style.padding = '10px';
+            exportMenu.style.zIndex = '1000';
+            exportMenu.style.minWidth = '150px';
+            
+            const formats = ['GeoJSON', 'KML', 'Shapefile', 'CSV'];
+            formats.forEach(format => {
+                const formatBtn = document.createElement('button');
+                formatBtn.textContent = format;
+                formatBtn.style.display = 'block';
+                formatBtn.style.width = '100%';
+                formatBtn.style.padding = '8px';
+                formatBtn.style.border = 'none';
+                formatBtn.style.backgroundColor = 'transparent';
+                formatBtn.style.textAlign = 'left';
+                formatBtn.style.cursor = 'pointer';
+                formatBtn.style.borderRadius = '4px';
+                
+                formatBtn.addEventListener('click', () => {
+                    // Simular descarga
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                        type: "FeatureCollection",
+                        features: [
+                            {
+                                type: "Feature",
+                                properties: {
+                                    name: "Ejemplo de dato geográfico",
+                                    category: "Ejemplo"
+                                },
+                                geometry: {
+                                    type: "Point",
+                                    coordinates: [-71.6559, -33.3549]
+                                }
+                            }
+                        ]
+                    }));
+                    
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute("download", `algarrobo_data.${format.toLowerCase()}`);
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                    
+                    // Cerrar menú
+                    exportMenu.remove();
+                });
+                
+                formatBtn.addEventListener('mouseenter', () => {
+                    formatBtn.style.backgroundColor = 'var(--light-gray)';
+                });
+                
+                formatBtn.addEventListener('mouseleave', () => {
+                    formatBtn.style.backgroundColor = 'transparent';
+                });
+                
+                exportMenu.appendChild(formatBtn);
+            });
+            
+            document.querySelector('.map-tools').appendChild(exportMenu);
+            
+            // Cerrar menú al hacer clic fuera
+            document.addEventListener('click', function closeExportMenu(e) {
+                if (!exportMenu.contains(e.target) && e.target !== document.getElementById('btn-export')) {
+                    exportMenu.remove();
+                    document.removeEventListener('click', closeExportMenu);
+                }
+            });
+        });
+
+        // --- FILTROS DE TARJETAS ---
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const cards = document.querySelectorAll('.card');
+        
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Actualizar botón activo
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const filter = btn.getAttribute('data-filter');
+                
+                cards.forEach(card => {
+                    if (filter === 'all' || card.getAttribute('data-category') === filter) {
+                        card.style.display = 'flex';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // --- ANIMACIÓN DE ENTRADA PROGRESIVA PARA TARJETAS ---
+        // Simular carga y mostrar tarjetas con animación
+        setTimeout(() => {
+            document.querySelector('.skeleton-loading').style.display = 'none';
+            document.querySelector('.card-grid').style.display = 'grid';
+            
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('visible');
+                }, index * 100); // Escalonar las animaciones
+            });
+        }, 1500);
+
+        // --- CONTADORES ANIMADOS DE ESTADÍSTICAS ---
+        const statNumbers = document.querySelectorAll('.stat-number');
+        
+        const animateCounters = () => {
+            statNumbers.forEach(stat => {
+                const target = parseInt(stat.getAttribute('data-target'));
+                const increment = target / 100;
+                let current = 0;
+                
+                const updateCounter = () => {
+                    current += increment;
+                    if (current < target) {
+                        stat.textContent = Math.ceil(current);
+                        requestAnimationFrame(updateCounter);
+                    } else {
+                        stat.textContent = target;
+                    }
+                };
+                
+                updateCounter();
+            });
+        };
+
+        // Activar animación cuando la sección de estadísticas sea visible
+        const statsSection = document.querySelector('.stats-section');
+        const observerOptions = {
+            threshold: 0.5
+        };
+        
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateCounters();
+                    statsObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+        
+        statsObserver.observe(statsSection);
+
+        // --- SISTEMA DE FAVORITOS ---
+        const favoriteBtns = document.querySelectorAll('.card-favorite');
+        const favoritesPanel = document.getElementById('favorites-panel');
+        const favoritesContent = document.getElementById('favorites-content');
+        const favoritesClose = document.getElementById('favorites-close');
+        const footerFavorites = document.getElementById('footer-favorites');
+        
+        // Actualizar panel de favoritos
+        const updateFavoritesPanel = () => {
+            if (favorites.length === 0) {
+                favoritesContent.innerHTML = '<p>No tienes mapas favoritos guardados.</p>';
+            } else {
+                favoritesContent.innerHTML = '';
+                
+                favorites.forEach(favId => {
+                    const card = document.querySelector(`.card-favorite[data-id="${favId}"]`).closest('.card');
+                    const title = card.querySelector('h3').textContent;
+                    const description = card.querySelector('p').textContent;
+                    const imgSrc = card.querySelector('img').src;
+                    
+                    const favItem = document.createElement('div');
+                    favItem.className = 'favorite-item';
+                    favItem.innerHTML = `
+                        <img src="${imgSrc}" alt="${title}">
+                        <div class="favorite-item-content">
+                            <div class="favorite-item-title">${title}</div>
+                            <div class="favorite-item-description">${description}</div>
+                        </div>
+                    `;
+                    
+                    favoritesContent.appendChild(favItem);
+                });
+            }
+        };
+        
+        // Inicializar panel de favoritos
+        updateFavoritesPanel();
+        
+        // Manejar clic en botones de favorito
+        favoriteBtns.forEach(btn => {
+            const id = btn.getAttribute('data-id');
+            const icon = btn.querySelector('i');
+            
+            // Verificar si ya es favorito
+            if (favorites.includes(id)) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                btn.classList.add('active');
+            }
+            
+            btn.addEventListener('click', () => {
+                if (favorites.includes(id)) {
+                    // Eliminar de favoritos
+                    favorites = favorites.filter(favId => favId !== id);
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    btn.classList.remove('active');
+                } else {
+                    // Agregar a favoritos
+                    favorites.push(id);
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    btn.classList.add('active');
+                }
+                
+                // Guardar en localStorage
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+                
+                // Actualizar panel
+                updateFavoritesPanel();
+            });
+        });
+        
+        // Abrir/cerrar panel de favoritos
+        favoritesClose.addEventListener('click', () => {
+            favoritesPanel.classList.remove('active');
+        });
+        
+        footerFavorites.addEventListener('click', () => {
+            favoritesPanel.classList.add('active');
+        });
+        
+        // --- EXPORTACIÓN DE DATOS DESDE TARJETAS ---
+        const exportBtns = document.querySelectorAll('.export-btn');
+        
+        exportBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                const id = btn.getAttribute('data-id');
+                const card = btn.closest('.card');
+                const title = card.querySelector('h3').textContent;
+                
+                // Crear un menú de exportación
+                const exportMenu = document.createElement('div');
+                exportMenu.style.position = 'absolute';
+                exportMenu.style.bottom = '40px';
+                exportMenu.style.left = '0';
+                exportMenu.style.backgroundColor = 'var(--white)';
+                exportMenu.style.borderRadius = '8px';
+                exportMenu.style.boxShadow = 'var(--card-shadow)';
+                exportMenu.style.padding = '10px';
+                exportMenu.style.zIndex = '1000';
+                exportMenu.style.minWidth = '150px';
+                
+                const formats = ['GeoJSON', 'KML', 'Shapefile', 'CSV'];
+                formats.forEach(format => {
+                    const formatBtn = document.createElement('button');
+                    formatBtn.textContent = format;
+                    formatBtn.style.display = 'block';
+                    formatBtn.style.width = '100%';
+                    formatBtn.style.padding = '8px';
+                    formatBtn.style.border = 'none';
+                    formatBtn.style.backgroundColor = 'transparent';
+                    formatBtn.style.textAlign = 'left';
+                    formatBtn.style.cursor = 'pointer';
+                    formatBtn.style.borderRadius = '4px';
+                    
+                    formatBtn.addEventListener('click', () => {
+                        // Simular descarga
+                        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                            type: "FeatureCollection",
+                            features: [
+                                {
+                                    type: "Feature",
+                                    properties: {
+                                        name: title,
+                                        category: "Algarrobo"
+                                    },
+                                    geometry: {
+                                        type: "Point",
+                                        coordinates: [-71.6559, -33.3549]
+                                    }
+                                }
+                            ]
+                        }));
+                        
+                        const downloadAnchorNode = document.createElement('a');
+                        downloadAnchorNode.setAttribute("href", dataStr);
+                        downloadAnchorNode.setAttribute("download", `${title.replace(/\s+/g, '_').toLowerCase()}_data.${format.toLowerCase()}`);
+                        document.body.appendChild(downloadAnchorNode);
+                        downloadAnchorNode.click();
+                        downloadAnchorNode.remove();
+                        
+                        // Cerrar menú
+                        exportMenu.remove();
+                    });
+                    
+                    formatBtn.addEventListener('mouseenter', () => {
+                        formatBtn.style.backgroundColor = 'var(--light-gray)';
+                    });
+                    
+                    formatBtn.addEventListener('mouseleave', () => {
+                        formatBtn.style.backgroundColor = 'transparent';
+                    });
+                    
+                    exportMenu.appendChild(formatBtn);
+                });
+                
+                btn.parentElement.appendChild(exportMenu);
+                
+                // Cerrar menú al hacer clic fuera
+                document.addEventListener('click', function closeCardExportMenu(e) {
+                    if (!exportMenu.contains(e.target) && e.target !== btn) {
+                        exportMenu.remove();
+                        document.removeEventListener('click', closeCardExportMenu);
+                    }
+                });
+            });
+        });
+        
+        // --- EFECTO RIPPLE EN BOTONES ---
+        const buttons = document.querySelectorAll('.btn');
+        
+        buttons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+        
+        // --- BREADCRUMBS DE NAVEGACIÓN ---
+        const navLinks = document.querySelectorAll('.main-nav a');
+        const currentPageElement = document.getElementById('current-page');
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = link.getAttribute('data-page');
+                currentPageElement.textContent = link.textContent;
+            });
+        });
+        
+        // --- FORMULARIO DE REPORTE DE ERRORES ---
+        const reportModal = document.getElementById('report-modal');
+        const reportClose = document.getElementById('report-close');
+        const submitReport = document.getElementById('submit-report');
+        const footerReport = document.getElementById('footer-report');
+        
+        footerReport.addEventListener('click', () => {
+            reportModal.classList.add('active');
+            
+            // Capturar la vista actual del mapa (simulado)
+            const mapScreenshot = document.getElementById('map-screenshot');
+            mapScreenshot.innerHTML = '<i class="fas fa-camera"></i> Captura de pantalla del mapa (simulada)';
+            
+            // Obtener coordenadas actuales del centro del mapa
+            const center = map.getCenter();
+            document.getElementById('report-location').value = `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`;
+        });
+        
+        reportClose.addEventListener('click', () => {
+            reportModal.classList.remove('active');
+        });
+        
+        submitReport.addEventListener('click', () => {
+            const category = document.getElementById('report-category').value;
+            const description = document.getElementById('report-description').value;
+            const location = document.getElementById('report-location').value;
+            
+            if (!category || !description) {
+                alert('Por favor, completa todos los campos obligatorios.');
+                return;
+            }
+            
+            // Simular envío del reporte
+            alert('¡Gracias por tu reporte! Hemos recibido tu información y la revisaremos pronto.');
+            reportModal.classList.remove('active');
+            
+            // Limpiar formulario
+            document.getElementById('report-category').value = '';
+            document.getElementById('report-description').value = '';
+            document.getElementById('report-location').value = '';
+        });
+        
+        // --- ATAJOS DE TECLADO ---
+        const shortcutsModal = document.getElementById('shortcuts-modal');
+        const shortcutsClose = document.getElementById('shortcuts-close');
+        const footerShortcuts = document.getElementById('footer-shortcuts');
+        
+        footerShortcuts.addEventListener('click', () => {
+            shortcutsModal.classList.add('active');
+        });
+        
+        shortcutsClose.addEventListener('click', () => {
+            shortcutsModal.classList.remove('active');
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            // Ignorar si el usuario está escribiendo en un input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            switch(e.key) {
+                case 'm':
+                case 'M':
+                    // Ir al mapa
+                    document.querySelector('.hero-map-section').scrollIntoView({ behavior: 'smooth' });
+                    break;
+                case 'd':
+                case 'D':
+                    // Ir a la sección de datos (simulado)
+                    alert('Sección de datos (simulado)');
+                    break;
+                case '/':
+                    // Activar búsqueda
+                    e.preventDefault();
+                    searchInput.focus();
+                    break;
+                case 'f':
+                case 'F':
+                    // Abrir panel de favoritos
+                    favoritesPanel.classList.add('active');
+                    break;
+                case 'c':
+                case 'C':
+                    // Activar comparador de mapas
+                    document.getElementById('btn-compare').click();
+                    break;
+                case 't':
+                case 'T':
+                    // Cambiar tema
+                    themeToggle.click();
+                    break;
+                case 'r':
+                case 'R':
+                    // Abrir formulario de reporte
+                    footerReport.click();
+                    break;
+                case '?':
+                    // Mostrar ayuda
+                    shortcutsModal.classList.add('active');
+                    break;
+                case 'Escape':
+                    // Cerrar modales
+                    reportModal.classList.remove('active');
+                    shortcutsModal.classList.remove('active');
+                    favoritesPanel.classList.remove('active');
+                    break;
+            }
+        });
+        
+        // Cerrar modales al hacer clic fuera
+        [reportModal, shortcutsModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

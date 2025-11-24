@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Algarrobo | Plataforma de Datos Geoespaciales</title>
+
+    <!-- Leaflet CSS (Biblioteca para el mapa) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- Variables de Diseño (Paleta de Colores Municipalidad de Algarrobo) --- */
+        :root {
+            --primary-color: #005a9c;
+            --secondary-color: #004175;
+            --accent-color: #f39c12;
+            --accent2-color: #00a650; /* Verde presente en el sitio */
+            --text-color: #333;
+            --light-gray: #f4f4f4;
+            --dark-gray: #555;
+            --white: #ffffff;
+        }
+
+        /* --- Estilos Generales y Reset --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--white);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--primary-color);
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--secondary-color);
+        }
+
+        /* --- Header y Navegación --- */
+        .main-header {
+            background-color: var(--white);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            width: 100%;
+        }
+
+        .main-header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 20px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo i {
+            margin-right: 10px;
+        }
+
+        .main-nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        .main-nav ul li {
+            margin-left: 25px;
+        }
+
+        .main-nav a {
+            font-weight: 500;
+            color: var(--dark-gray);
+            font-size: 1rem;
+        }
+        
+        .main-nav a:hover {
+            color: var(--primary-color);
+        }
+
+        .menu-toggle {
+            display: none; /* Oculto en escritorio */
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary-color);
+        }
+
+        /* --- Sección Hero con Mapa --- */
+        .hero-map-section {
+            position: relative;
+            height: 70vh; /* 70% de la altura de la ventana */
+            width: 100%;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--white);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4); /* Fondo semitransparente */
+            z-index: 2;
+            pointer-events: none; /* Permite hacer clic en el mapa a través del overlay */
+        }
+
+        .hero-overlay h1 {
+            font-size: 3.5rem;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+
+        .hero-overlay p {
+            font-size: 1.2rem;
+            max-width: 600px;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+        }
+
+        /* --- Sección de Aplicaciones / Tarjetas --- */
+        .apps-section {
+            padding: 4rem 0;
+            background-color: var(--light-gray);
+        }
+
+        .apps-section .container h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 3rem;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-content h3 {
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .card-content p {
+            margin: 1rem 0;
+            color: var(--dark-gray);
+            flex-grow: 1;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: var(--white);
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-weight: 600;
+            text-align: center;
+            align-self: flex-start;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #e67e22;
+            color: var(--white);
+        }
+
+        /* --- Footer --- */
+        .main-footer {
+            background-color: var(--secondary-color);
+            color: var(--light-gray);
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .main-footer p {
+            margin: 0;
+        }
+        
+        .main-footer a {
+            color: var(--white);
+        }
+
+        /* --- Diseño Responsivo (Mobile) --- */
+        @media (max-width: 768px) {
+            .main-header .container {
+                flex-wrap: wrap;
+            }
+
+            .main-nav {
+                width: 100%;
+                display: none; /* Oculto por defecto */
+            }
+
+            .main-nav.active {
+                display: block; /* Se muestra al hacer clic */
+            }
+
+            .main-nav ul {
+                flex-direction: column;
+                text-align: center;
+                margin-top: 1rem;
+            }
+
+            .main-nav ul li {
+                margin: 10px 0;
+            }
+
+            .menu-toggle {
+                display: block; /* Se muestra el icono de menú */
+            }
+
+            .hero-overlay h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-overlay p {
+                font-size: 1rem;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- ==================== HEADER ==================== -->
+    <header class="main-header">
+        <div class="container">
+            <a href="#" class="logo">
+                <i class="fas fa-map-marked-alt"></i>
+                Geoportal Algarrobo
+            </a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#">Inicio</a></li>
+                    <li><a href="#">Mapas</a></li>
+                    <li><a href="#">Datos</a></li>
+                    <li><a href="#">Aplicaciones</a></li>
+                    <li><a href="#">Acerca de</a></li>
+                </ul>
+            </nav>
+            <div class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- ==================== SECCIÓN HERO CON MAPA ==================== -->
+        <section class="hero-map-section">
+            <div id="map"></div>
+            <div class="hero-overlay">
+                <h1>Geoportal Municipalidad de Algarrobo</h1>
+                <p>Explora, visualiza y descarga los mapas y datos geográficos de nuestra comuna.</p>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE APLICACIONES ==================== -->
+        <section class="apps-section">
+            <div class="container">
+                <h2>Aplicaciones y Mapas Temáticos de Algarrobo</h2>
+                <div class="card-grid">
+                    <!-- Tarjeta 1 -->
+                    <div class="card">
+                        <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Uso de Suelo">
+                        <div class="card-content">
+                            <h3>Uso de Suelo</h3>
+                            <p>Visualiza las diferentes zonas de uso de suelo (residencial, comercial, turístico) en la comuna de Algarrobo.</p>
+                            <a href="#" class="btn">Explorar Mapa</a>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 2 -->
+                    <div class="card">
+                        <img src="https://images.unsplash.com/photo-1593696140826-c58b021acf8b?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Límites Comunales">
+                        <div class="card-content">
+                            <h3>Límites y Sectores</h3>
+                            <p>Explora los límites comunales, barrios y sectores de Algarrobo, incluyendo Mirasol, Puntalarga y el sector centro.</p>
+                            <a href="#" class="btn">Explorar Mapa</a>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 3 -->
+                    <div class="card">
+                        <img src="https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Infraestructura Vial">
+                        <div class="card-content">
+                            <h3>Infraestructura Vial</h3>
+                            <p>Información detallada sobre las principales vías, avenidas y el estado de las carreteras de acceso a Algarrobo.</p>
+                            <a href="#" class="btn">Explorar Mapa</a>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 4 -->
+                    <div class="card">
+                        <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Playas">
+                        <div class="card-content">
+                            <h3>Playas y Áreas de Recreación</h3>
+                            <p>Localiza las principales playas de Algarrobo como El Canelo, Las Brisas, y el sector de Punta de Tralca.</p>
+                            <a href="#" class="btn">Explorar Mapa</a>
+                        </div>
+                    </div>
+                    <!-- Tarjeta 5 -->
+                    <div class="card">
+                        <img src="https://images.unsplash.com/photo-1590650213538-0b8d5b2c79d5?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Transporte Público">
+                        <div class="card-content">
+                            <h3>Rutas de Transporte Público</h3>
+                            <p>Consulta las rutas de autobuses, paradas y horarios del sistema de transporte público que conecta Algarrobo con Santiago.</p>
+                            <a href="#" class="btn">Explorar Mapa</a>
+                        </div>
+                    </div>
+                     <!-- Tarjeta 6 -->
+                    <div class="card">
+                        <img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=640" alt="Mapa de Turismo">
+                        <div class="card-content">
+                            <h3>Puntos de Interés Turístico</h3>
+                            <p>Descubre los principales atractivos turísticos de Algarrobo, incluyendo restaurantes, hoteles y el Yacht Club.</p>
+                            <a href="#" class="btn">Explorar Mapa</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2024 Geoportal Algarrobo. Municipalidad de Algarrobo, Chile. Todos los derechos reservados. Desarrollado con <i class="fas fa-heart" style="color: var(--accent-color);"></i> usando <a href="https://leafletjs.com/" target="_blank">Leaflet</a>.</p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS (Biblioteca para el mapa) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <!-- Script para inicializar el mapa y la funcionalidad -->
+    <script>
+        // --- INICIALIZACIÓN DEL MAPA ---
+        // Coordenadas iniciales y nivel de zoom (Algarrobo, Chile)
+        const map = L.map('map').setView([-33.3549, -71.6559], 13);
+
+        // Capa de mapa base de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // --- EJEMPLO DE MARCADOR Y POLÍGONO ---
+        // Marcador en un punto de interés
+        const marker = L.marker([-33.3563, -71.6529]).addTo(map)
+            .bindPopup('<b>Plaza de Armas de Algarrobo</b><br>Centro cívico de la comuna.')
+            .openPopup();
+
+        // Polígono para delimitar un área
+        const polygon = L.polygon([
+            [-33.3500, -71.6600],
+            [-33.3500, -71.6400],
+            [-33.3700, -71.6400],
+            [-33.3700, -71.6600]
+        ]).addTo(map)
+        .bindPopup('Área central de Algarrobo.');
+
+        // --- FUNCIONALIDAD DEL MENÚ MÓVIL ---
+        const menuToggle = document.querySelector('.menu-toggle');
+        const mainNav = document.querySelector('.main-nav');
+
+        menuToggle.addEventListener('click', () => {
+            mainNav.classList.toggle('active');
+        });
+
+    </script>
+
+</body>
+</html>
