@@ -1,0 +1,2255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Algarrobo | Plataforma de Datos Geoespaciales</title>
+
+    <!-- Leaflet CSS (Biblioteca para el mapa) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- Variables de Diseño (Nueva Paleta de Colores) --- */
+        :root {
+            --primary-color: #007B5E;
+            --secondary-color: #006644;
+            --accent-color: #005C4A;
+            --accent2-color: #C70039;
+            --text-color: #333333;
+            --light-gray: #F0F0F0;
+            --dark-gray: #444444;
+            --white: #ffffff;
+            --border-radius: 16px;
+            --transition-speed: 0.3s;
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+        }
+
+        /* --- Estilos Generales y Reset --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--white);
+            overflow-x: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="rgba(0,123,94,0.5)" stroke="rgba(0,123,94,0.8)" stroke-width="2"/></svg>') 16 16, auto;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        h1, h2, h3 {
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: var(--white);
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--primary-color);
+            transition: color var(--transition-speed) ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        a:hover {
+            color: var(--accent-color);
+        }
+
+        /* --- Barra de Progreso de Scroll --- */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            z-index: 10000;
+            transition: width 0.2s ease;
+        }
+
+        /* --- Cursor Personalizado --- */
+        .custom-cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(0, 123, 94, 0.5);
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .cursor-grow {
+            transform: translate(-50%, -50%) scale(2);
+            background: rgba(0, 123, 94, 0.3);
+        }
+
+        /* --- Header con Glassmorphism --- */
+        .main-header {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            width: 100%;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .main-header.scrolled {
+            background-color: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .main-header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 20px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            transition: transform var(--transition-speed) ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .logo i {
+            margin-right: 10px;
+            font-size: 2rem;
+            transition: transform var(--transition-speed) ease;
+        }
+
+        .logo:hover i {
+            transform: rotate(10deg);
+        }
+
+        .logo-subtitle {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--dark-gray);
+            margin-top: -5px;
+        }
+
+        .main-nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        .main-nav ul li {
+            margin-left: 30px;
+            position: relative;
+        }
+
+        .main-nav a {
+            font-weight: 600;
+            color: var(--dark-gray);
+            font-size: 1.1rem;
+            position: relative;
+            padding-bottom: 5px;
+        }
+
+        /* Animación subrayado deslizante */
+        .main-nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+            transition: width var(--transition-speed) ease;
+        }
+
+        .main-nav a:hover::after {
+            width: 100%;
+        }
+
+        .menu-toggle {
+            display: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--primary-color);
+            transition: transform var(--transition-speed) ease;
+        }
+
+        .menu-toggle:hover {
+            transform: rotate(90deg);
+        }
+
+        /* --- Breadcrumb Trail --- */
+        .breadcrumb {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(5px);
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            color: var(--dark-gray);
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-item:not(:last-child)::after {
+            content: '\f054';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            margin: 0 10px;
+            font-size: 0.7rem;
+            color: var(--primary-color);
+        }
+
+        .breadcrumb-item a {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .breadcrumb-item.active {
+            color: var(--dark-gray);
+        }
+
+        /* --- Sección Hero con Parallax --- */
+        .hero-map-section {
+            position: relative;
+            height: 85vh;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .hero-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/2/26/Panoramica_Algarrobo.JPG');
+            background-size: cover;
+            background-position: center;
+            z-index: 1;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--white);
+            text-align: center;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7));
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            padding: 0 20px;
+        }
+
+        .hero-overlay h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .hero-overlay p {
+            font-size: 1.3rem;
+            max-width: 700px;
+            margin-bottom: 2rem;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: center;
+            pointer-events: all;
+            transition: all var(--transition-speed) ease;
+            box-shadow: 0 4px 15px rgba(0, 123, 94, 0.3);
+            animation: fadeInUp 1s ease-out 0.6s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .cta-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .cta-button:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 123, 94, 0.4);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+            z-index: 2;
+            color: var(--white);
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        /* --- Partículas Flotantes --- */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            animation: floatUp 15s infinite linear;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 0;
+                transform: translateY(100vh) scale(0);
+            }
+            10% {
+                opacity: 0.4;
+            }
+            90% {
+                opacity: 0.4;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100vh) scale(1.5);
+            }
+        }
+
+        /* --- Sección de Destacados con Gradientes Animados --- */
+        .featured-section {
+            padding: 5rem 0;
+            background-color: var(--white);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .featured-section .container h2 {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2.5rem;
+        }
+
+        .featured-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            background-size: 200% 200%;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0, 123, 94, 0.2);
+            overflow: hidden;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .featured-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 123, 94, 0.3);
+        }
+
+        .featured-content {
+            padding: 2rem;
+            color: var(--white);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .featured-content h3 {
+            color: var(--white);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .featured-content p {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .featured-button {
+            display: inline-block;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: var(--white);
+            padding: 0.8rem 1.5rem;
+            border-radius: calc(var(--border-radius) / 2);
+            font-weight: 600;
+            text-align: center;
+            transition: all var(--transition-speed) ease;
+            border: 2px solid var(--white);
+        }
+
+        .featured-button:hover {
+            background-color: var(--white);
+            color: var(--primary-color);
+        }
+
+        /* --- Sección de Aplicaciones Mejorada --- */
+        .apps-section {
+            padding: 5rem 0;
+            background-color: var(--light-gray);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .apps-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 123, 94, 0.05) 0%, rgba(0, 123, 94, 0.1) 100%);
+            z-index: -1;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-header h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 2px;
+        }
+
+        .section-header p {
+            font-size: 1.2rem;
+            color: var(--dark-gray);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Barra de búsqueda y filtros */
+        .search-filter-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 1rem;
+        }
+
+        .search-box {
+            position: relative;
+            flex-grow: 1;
+            max-width: 500px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 50px 12px 20px;
+            border: none;
+            border-radius: 50px;
+            background-color: var(--white);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            font-size: 1rem;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .search-box button {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .search-box button:hover {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 5px;
+            background-color: var(--white);
+            border-radius: 50px;
+            padding: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .view-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: none;
+            color: var(--dark-gray);
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-btn.active {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        /* Tabs mejorados */
+        .tabs-container {
+            margin-bottom: 3rem;
+        }
+
+        .tabs-nav {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            background-color: var(--white);
+            border-radius: 50px;
+            padding: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark-gray);
+            cursor: pointer;
+            position: relative;
+            transition: all var(--transition-speed) ease;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .tab-button i {
+            font-size: 1.1rem;
+        }
+
+        .tab-button.active {
+            color: var(--white);
+            background-color: var(--primary-color);
+            box-shadow: 0 4px 10px rgba(0, 123, 94, 0.3);
+        }
+
+        .tab-button:hover:not(.active) {
+            color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Tarjetas mejoradas */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .card-grid.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: translateY(30px);
+            position: relative;
+        }
+
+        .card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .card-image-container {
+            position: relative;
+            overflow: hidden;
+            height: 220px;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform var(--transition-speed) ease;
+        }
+
+        .card:hover img {
+            transform: scale(1.08);
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.7));
+            display: flex;
+            align-items: flex-end;
+            padding: 1.5rem;
+            opacity: 0;
+            transition: opacity var(--transition-speed) ease;
+        }
+
+        .card:hover .card-overlay {
+            opacity: 1;
+        }
+
+        .overlay-content h3 {
+            color: var(--white);
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .overlay-content p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+        }
+
+        .card-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: var(--accent2-color);
+            color: var(--white);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            z-index: 1;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(199, 0, 57, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(199, 0, 57, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(199, 0, 57, 0);
+            }
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-content h3 {
+            font-size: 1.4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .card-content p {
+            margin-bottom: 1.5rem;
+            color: var(--dark-gray);
+            flex-grow: 1;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .card-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+        }
+
+        .card-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-stats i {
+            color: var(--primary-color);
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            text-align: center;
+            transition: all var(--transition-speed) ease;
+            box-shadow: 0 4px 10px rgba(0, 123, 94, 0.2);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 123, 94, 0.3);
+        }
+
+        /* Paginación */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 3rem;
+            gap: 10px;
+        }
+
+        .pagination-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--white);
+            border: none;
+            color: var(--dark-gray);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .pagination-btn.active {
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .pagination-btn:hover:not(.active) {
+            background-color: var(--light-gray);
+        }
+
+        /* --- Sección de Estadísticas con Contadores Animados --- */
+        .stats-section {
+            padding: 5rem 0;
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 2rem;
+            min-width: 200px;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* --- Sección de Testimonios --- */
+        .testimonials-section {
+            padding: 5rem 0;
+            background-color: var(--light-gray);
+        }
+
+        .testimonials-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .testimonial {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .testimonial.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .testimonial-text {
+            font-style: italic;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+        }
+
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 1rem;
+            object-fit: cover;
+        }
+
+        .author-info h4 {
+            margin-bottom: 0.2rem;
+            color: var(--primary-color);
+        }
+
+        .author-info p {
+            margin: 0;
+            color: var(--dark-gray);
+            font-size: 0.9rem;
+        }
+
+        .testimonial-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .testimonial-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: var(--white);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .testimonial-btn:hover {
+            background-color: var(--accent-color);
+            transform: scale(1.1);
+        }
+
+        /* --- Sección de Timeline --- */
+        .timeline-section {
+            padding: 5rem 0;
+            background-color: var(--white);
+        }
+
+        .timeline-container {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .timeline-container::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            background-color: var(--primary-color);
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -2px;
+        }
+
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            background-color: inherit;
+            width: 50%;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .timeline-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.5s ease;
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            right: -10px;
+            background-color: var(--white);
+            border: 4px solid var(--primary-color);
+            top: 15px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .left {
+            left: 0;
+        }
+
+        .right {
+            left: 50%;
+        }
+
+        .left::before {
+            content: " ";
+            height: 0;
+            position: absolute;
+            top: 22px;
+            width: 0;
+            z-index: 1;
+            right: 30px;
+            border: medium solid var(--white);
+            border-width: 10px 0 10px 10px;
+            border-color: transparent transparent transparent var(--white);
+        }
+
+        .right::before {
+            content: " ";
+            height: 0;
+            position: absolute;
+            top: 22px;
+            width: 0;
+            z-index: 1;
+            left: 30px;
+            border: medium solid var(--white);
+            border-width: 10px 10px 10px 0;
+            border-color: transparent var(--white) transparent transparent;
+        }
+
+        .right::after {
+            left: -10px;
+        }
+
+        .timeline-content {
+            padding: 20px 30px;
+            background-color: var(--white);
+            position: relative;
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        }
+
+        .timeline-date {
+            color: var(--accent2-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        /* --- Anclas Flotantes --- */
+        .floating-nav {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .floating-nav-item {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+            position: relative;
+        }
+
+        .floating-nav-item:hover {
+            background-color: var(--accent-color);
+            transform: scale(1.1);
+        }
+
+        .floating-nav-tooltip {
+            position: absolute;
+            right: 50px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: var(--white);
+            padding: 5px 10px;
+            border-radius: 5px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-speed) ease;
+        }
+
+        .floating-nav-item:hover .floating-nav-tooltip {
+            opacity: 1;
+        }
+
+        /* --- CTA Flotante --- */
+        .floating-cta {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--accent2-color);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(199, 0, 57, 0.4);
+            z-index: 100;
+            transition: all var(--transition-speed) ease;
+            animation: pulse 2s infinite;
+        }
+
+        .floating-cta:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(199, 0, 57, 0.6);
+        }
+
+        /* --- Footer con Degradado --- */
+        .main-footer {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            color: var(--light-gray);
+            text-align: center;
+            padding: 3rem 0;
+            margin-top: 5rem;
+        }
+
+        .main-footer p {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .main-footer a {
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        /* --- Animaciones --- */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+
+        /* --- Diseño Responsivo (Mobile) --- */
+        @media (max-width: 768px) {
+            .main-header .container {
+                flex-wrap: wrap;
+            }
+
+            .main-nav {
+                width: 100%;
+                display: none;
+            }
+
+            .main-nav.active {
+                display: block;
+            }
+
+            .main-nav ul {
+                flex-direction: column;
+                text-align: center;
+                margin-top: 1rem;
+            }
+
+            .main-nav ul li {
+                margin: 10px 0;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .hero-overlay h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-overlay p {
+                font-size: 1rem;
+            }
+
+            .featured-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline-container::after {
+                left: 31px;
+            }
+
+            .timeline-item {
+                width: 100%;
+                padding-left: 70px;
+                padding-right: 25px;
+            }
+
+            .timeline-item::before {
+                left: 60px;
+                border: medium solid var(--white);
+                border-width: 10px 10px 10px 0;
+                border-color: transparent var(--white) transparent transparent;
+            }
+
+            .left::after, .right::after {
+                left: 21px;
+            }
+
+            .left::before {
+                display: none;
+            }
+
+            .right {
+                left: 0%;
+            }
+
+            .floating-nav {
+                display: none;
+            }
+
+            .breadcrumb {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .breadcrumb-item:not(:last-child)::after {
+                display: none;
+            }
+
+            .stats-container {
+                flex-direction: column;
+            }
+
+            .search-filter-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                max-width: 100%;
+            }
+            
+            .tabs-nav {
+                padding: 5px;
+                gap: 5px;
+            }
+            
+            .tab-button {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .tab-button i {
+                font-size: 0.9rem;
+            }
+            
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .card-footer {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra de Progreso de Scroll -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Cursor Personalizado -->
+    <div class="custom-cursor" id="customCursor"></div>
+
+    <!-- ==================== HEADER ==================== -->
+    <header class="main-header">
+        <div class="container">
+            <a href="#" class="logo">
+                <i class="fas fa-map-marked-alt"></i>
+                Geoportal Algarrobo
+                <span class="logo-subtitle">Plataforma oficial de mapas y datos territoriales</span>
+            </a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#home">Inicio</a></li>
+                    <li><a href="#apps">Aplicaciones</a></li>
+                    <li><a href="#about">Acerca de</a></li>
+                </ul>
+            </nav>
+            <div class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- ==================== SECCIÓN HERO CON PARALLAX ==================== -->
+        <section class="hero-map-section" id="home">
+            <div class="hero-background" id="heroBackground"></div>
+            <div class="particles" id="particles"></div>
+            
+            <!-- Breadcrumb Trail -->
+            <div class="breadcrumb">
+                <div class="breadcrumb-item"><a href="#home">Inicio</a></div>
+                <div class="breadcrumb-item active">Geoportal Algarrobo</div>
+            </div>
+            
+            <div class="hero-overlay">
+                <div class="hero-content">
+                    <h1>Geoportal Municipalidad de Algarrobo</h1>
+                    <p>Explora, visualiza y descarga los mapas y datos geográficos de nuestra comuna.</p>
+                    <a href="#apps" class="cta-button">Entrar al Geoportal</a>
+                </div>
+            </div>
+            <div class="scroll-indicator">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE ESTADÍSTICAS ==================== -->
+        <section class="stats-section">
+            <div class="container">
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="50">0</div>
+                        <div class="stat-label">Mapas Disponibles</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="200">0</div>
+                        <div class="stat-label">Capas de Datos</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="15">0</div>
+                        <div class="stat-label">Aplicaciones Temáticas</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" data-target="1000">0</div>
+                        <div class="stat-label">Usuarios Activos</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE DESTACADOS ==================== -->
+        <section class="featured-section">
+            <div class="container">
+                <h2>Explora nuestros recursos principales</h2>
+                <div class="featured-grid">
+                    <!-- Destacado 1 -->
+                    <div class="featured-card">
+                        <div class="featured-content">
+                            <div>
+                                <h3>Uso de Suelo</h3>
+                                <p>Visualiza las diferentes zonas de uso de suelo (residencial, comercial, turístico) en la comuna de Algarrobo.</p>
+                            </div>
+                            <a href="visor6.html" class="featured-button">Explorar Mapa</a>
+                        </div>
+                    </div>
+                    <!-- Destacado 2 -->
+                    <div class="featured-card">
+                        <div class="featured-content">
+                            <div>
+                                <h3>Límites y Sectores</h3>
+                                <p>Explora los límites comunales, barrios y sectores de Algarrobo, incluyendo Mirasol, Puntalarga y el sector centro.</p>
+                            </div>
+                            <a href="visor6.html" class="featured-button">Explorar Mapa</a>
+                        </div>
+                    </div>
+                    <!-- Destacado 3 -->
+                    <div class="featured-card">
+                        <div class="featured-content">
+                            <div>
+                                <h3>Turismo</h3>
+                                <p>Descubre los principales atractivos turísticos de Algarrobo, incluyendo restaurantes, hoteles y el Yacht Club.</p>
+                            </div>
+                            <a href="visor6.html" class="featured-button">Explorar Mapa</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE TESTIMONIOS ==================== -->
+        <section class="testimonials-section">
+            <div class="container">
+                <h2>Lo que dicen nuestros usuarios</h2>
+                <div class="testimonials-container">
+                    <!-- Testimonio 1 -->
+                    <div class="testimonial active">
+                        <div class="testimonial-text">
+                            "El geoportal de Algarrobo ha sido una herramienta fundamental para mi investigación sobre el desarrollo costero. La calidad de los datos y la facilidad de uso son excepcionales."
+                        </div>
+                        <div class="testimonial-author">
+                            <img src="https://picsum.photos/seed/user1/100/100.jpg" alt="Usuario" class="author-avatar">
+                            <div class="author-info">
+                                <h4>María González</h4>
+                                <p>Investigadora Universidad de Chile</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Testimonio 2 -->
+                    <div class="testimonial">
+                        <div class="testimonial-text">
+                            "Como urbanista, utilizo regularmente el geoportal para planificar proyectos en la zona. La información de uso de suelo es precisa y siempre actualizada."
+                        </div>
+                        <div class="testimonial-author">
+                            <img src="https://picsum.photos/seed/user2/100/100.jpg" alt="Usuario" class="author-avatar">
+                            <div class="author-info">
+                                <h4>Carlos Rodríguez</h4>
+                                <p>Urbanista Consultor</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Testimonio 3 -->
+                    <div class="testimonial">
+                        <div class="testimonial-text">
+                            "La interfaz es intuitiva y los mapas son de alta calidad. Ha facilitado enormemente nuestro trabajo de monitoreo ambiental en la costa de Algarrobo."
+                        </div>
+                        <div class="testimonial-author">
+                            <img src="https://picsum.photos/seed/user3/100/100.jpg" alt="Usuario" class="author-avatar">
+                            <div class="author-info">
+                                <h4>Ana Silva</h4>
+                                <p>Directora ONG Ambiental</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-controls">
+                    <button class="testimonial-btn" id="prevTestimonial">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="testimonial-btn" id="nextTestimonial">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE TIMELINE ==================== -->
+        <section class="timeline-section">
+            <div class="container">
+                <h2>Actualizaciones Recientes</h2>
+                <div class="timeline-container">
+                    <!-- Timeline Item 1 -->
+                    <div class="timeline-item left">
+                        <div class="timeline-content">
+                            <div class="timeline-date">Marzo 2024</div>
+                            <h3>Nueva Capa de Transporte Público</h3>
+                            <p>Hemos incorporado la actualización de rutas de autobuses que conectan Algarrobo con Santiago, incluyendo horarios actualizados y nuevas paradas.</p>
+                        </div>
+                    </div>
+                    <!-- Timeline Item 2 -->
+                    <div class="timeline-item right">
+                        <div class="timeline-content">
+                            <div class="timeline-date">Febrero 2024</div>
+                            <h3>Actualización de Uso de Suelo</h3>
+                            <p>Se ha actualizado la información de uso de suelo con las modificaciones aprobadas en el Plan Regulador Comunal durante el último trimestre.</p>
+                        </div>
+                    </div>
+                    <!-- Timeline Item 3 -->
+                    <div class="timeline-item left">
+                        <div class="timeline-content">
+                            <div class="timeline-date">Enero 2024</div>
+                            <h3>Nueva Aplicación de Playas</h3>
+                            <p>Lanzamos una nueva aplicación temática que permite explorar todas las playas de Algarrobo, incluyendo información sobre servicios, accesibilidad y estado de las aguas.</p>
+                        </div>
+                    </div>
+                    <!-- Timeline Item 4 -->
+                    <div class="timeline-item right">
+                        <div class="timeline-content">
+                            <div class="timeline-date">Diciembre 2023</div>
+                            <h3>Mejoras en la Infraestructura Vial</h3>
+                            <p>Se han incorporado los últimos proyectos de mejora en la infraestructura vial, incluyendo nuevas ciclovías y mejoras en el acceso a sectores turísticos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECCIÓN DE APLICACIONES ==================== -->
+        <section class="apps-section" id="apps">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Aplicaciones y Mapas Temáticos</h2>
+                    <p>Explora nuestra colección de mapas interactivos y herramientas geoespaciales</p>
+                </div>
+                
+                <!-- Barra de búsqueda y filtros -->
+                <div class="search-filter-container">
+                    <div class="search-box">
+                        <input type="text" id="mapSearch" placeholder="Buscar mapas y aplicaciones...">
+                        <button type="button" id="searchBtn"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="view-toggle">
+                        <button id="gridView" class="view-btn active"><i class="fas fa-th"></i></button>
+                        <button id="listView" class="view-btn"><i class="fas fa-list"></i></button>
+                    </div>
+                </div>
+                
+                <!-- Tabs de Navegación -->
+                <div class="tabs-container">
+                    <div class="tabs-nav">
+                        <button class="tab-button active" data-tab="urbanismo">
+                            <i class="fas fa-city"></i> Urbanismo
+                        </button>
+                        <button class="tab-button" data-tab="turismo">
+                            <i class="fas fa-umbrella-beach"></i> Turismo
+                        </button>
+                        <button class="tab-button" data-tab="medio-ambiente">
+                            <i class="fas fa-leaf"></i> Medio Ambiente
+                        </button>
+                        <button class="tab-button" data-tab="transporte">
+                            <i class="fas fa-bus"></i> Transporte
+                        </button>
+                    </div>
+                    
+                    <!-- Tab Content 1: Urbanismo -->
+                    <div class="tab-content active" id="urbanismo">
+                        <div class="card-grid">
+                            <!-- Tarjeta 1 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <div class="card-badge">Popular</div>
+                                    <img src="https://picsum.photos/seed/uso-suelo/640/400.jpg" alt="Mapa de Uso de Suelo" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Uso de Suelo</h3>
+                                            <p>Visualiza las diferentes zonas de uso de suelo</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Uso de Suelo</h3>
+                                    <p>Visualiza las diferentes zonas de uso de suelo (residencial, comercial, turístico) en la comuna de Algarrobo.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 2.5k vistas</span>
+                                            <span><i class="fas fa-download"></i> 350 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tarjeta 2 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <div class="card-badge">Nuevo</div>
+                                    <img src="https://picsum.photos/seed/limites-comunales/640/400.jpg" alt="Mapa de Límites Comunales" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Límites y Sectores</h3>
+                                            <p>Explora los límites comunales, barrios y sectores</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Límites y Sectores</h3>
+                                    <p>Explora los límites comunales, barrios y sectores de Algarrobo, incluyendo Mirasol, Puntalarga y el sector centro.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 1.8k vistas</span>
+                                            <span><i class="fas fa-download"></i> 220 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tarjeta 3 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <img src="https://picsum.photos/seed/infraestructura-vial/640/400.jpg" alt="Mapa de Infraestructura Vial" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Infraestructura Vial</h3>
+                                            <p>Información detallada sobre las principales vías</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Infraestructura Vial</h3>
+                                    <p>Información detallada sobre las principales vías, avenidas y el estado de las carreteras de acceso a Algarrobo.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 1.2k vistas</span>
+                                            <span><i class="fas fa-download"></i> 180 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content 2: Turismo -->
+                    <div class="tab-content" id="turismo">
+                        <div class="card-grid">
+                            <!-- Tarjeta 4 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <div class="card-badge">Popular</div>
+                                    <img src="https://picsum.photos/seed/playas-algarrobo/640/400.jpg" alt="Mapa de Playas" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Playas y Áreas de Recreación</h3>
+                                            <p>Localiza las principales playas de Algarrobo</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Playas y Áreas de Recreación</h3>
+                                    <p>Localiza las principales playas de Algarrobo como El Canelo, Las Brisas, y el sector de Punta de Tralca.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 3.2k vistas</span>
+                                            <span><i class="fas fa-download"></i> 450 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tarjeta 5 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <div class="card-badge">Actualizado</div>
+                                    <img src="https://picsum.photos/seed/turismo-algarrobo/640/400.jpg" alt="Mapa de Turismo" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Puntos de Interés Turístico</h3>
+                                            <p>Descubre los principales atractivos turísticos</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Puntos de Interés Turístico</h3>
+                                    <p>Descubre los principales atractivos turísticos de Algarrobo, incluyendo restaurantes, hoteles y el Yacht Club.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 2.8k vistas</span>
+                                            <span><i class="fas fa-download"></i> 380 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content 3: Medio Ambiente -->
+                    <div class="tab-content" id="medio-ambiente">
+                        <div class="card-grid">
+                            <!-- Tarjeta 6 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <img src="https://picsum.photos/seed/areas-protegidas/640/400.jpg" alt="Mapa de Áreas Protegidas" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Áreas Protegidas</h3>
+                                            <p>Explora las áreas de conservación</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Áreas Protegidas</h3>
+                                    <p>Explora las áreas de conservación y protección ambiental en la comuna de Algarrobo y sus alrededores.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 1.5k vistas</span>
+                                            <span><i class="fas fa-download"></i> 200 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tarjeta 7 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <img src="https://picsum.photos/seed/calidad-agua/640/400.jpg" alt="Mapa de Calidad del Agua" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Calidad del Agua</h3>
+                                            <p>Consulta los datos de monitoreo de calidad</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Calidad del Agua</h3>
+                                    <p>Consulta los datos de monitoreo de calidad de agua en las playas y cuerpos de agua de la comuna.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 1.8k vistas</span>
+                                            <span><i class="fas fa-download"></i> 250 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content 4: Transporte -->
+                    <div class="tab-content" id="transporte">
+                        <div class="card-grid">
+                            <!-- Tarjeta 8 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <img src="https://picsum.photos/seed/transporte-publico/640/400.jpg" alt="Mapa de Transporte Público" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Rutas de Transporte Público</h3>
+                                            <p>Consulta las rutas de autobuses</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Rutas de Transporte Público</h3>
+                                    <p>Consulta las rutas de autobuses, paradas y horarios del sistema de transporte público que conecta Algarrobo con Santiago.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 2.1k vistas</span>
+                                            <span><i class="fas fa-download"></i> 320 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tarjeta 9 -->
+                            <div class="card">
+                                <div class="card-image-container">
+                                    <img src="https://picsum.photos/seed/ciclovias/640/400.jpg" alt="Mapa de Ciclovías" loading="lazy">
+                                    <div class="card-overlay">
+                                        <div class="overlay-content">
+                                            <h3>Ciclovías y Rutas Bicicletas</h3>
+                                            <p>Descubre las ciclovías y rutas seguras</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <h3>Ciclovías y Rutas Bicicletas</h3>
+                                    <p>Descubre las ciclovías y rutas seguras para bicicletas en Algarrobo y sus alrededores.</p>
+                                    <div class="card-footer">
+                                        <div class="card-stats">
+                                            <span><i class="fas fa-eye"></i> 1.3k vistas</span>
+                                            <span><i class="fas fa-download"></i> 190 descargas</span>
+                                        </div>
+                                        <a href="visor6.html" class="btn">Explorar Mapa</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Paginación -->
+                <div class="pagination">
+                    <button class="pagination-btn prev"><i class="fas fa-chevron-left"></i></button>
+                    <button class="pagination-btn active">1</button>
+                    <button class="pagination-btn">2</button>
+                    <button class="pagination-btn">3</button>
+                    <button class="pagination-btn next"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== ANCLAS FLOTANTES ==================== -->
+    <div class="floating-nav">
+        <div class="floating-nav-item" data-target="#home">
+            <i class="fas fa-home"></i>
+            <div class="floating-nav-tooltip">Inicio</div>
+        </div>
+        <div class="floating-nav-item" data-target="#apps">
+            <i class="fas fa-map"></i>
+            <div class="floating-nav-tooltip">Aplicaciones</div>
+        </div>
+        <div class="floating-nav-item" data-target="#about">
+            <i class="fas fa-info-circle"></i>
+            <div class="floating-nav-tooltip">Acerca de</div>
+        </div>
+    </div>
+
+    <!-- ==================== CTA FLOTANTE ==================== -->
+    <div class="floating-cta" id="floatingCta">
+        <i class="fas fa-map-marked-alt"></i>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="main-footer" id="about">
+        <div class="container">
+            <p>&copy; 2024 Geoportal Algarrobo. Municipalidad de Algarrobo, Chile. Todos los derechos reservados. Desarrollado con <i class="fas fa-heart" style="color: var(--accent2-color);"></i> usando <a href="https://leafletjs.com/" target="_blank">Leaflet</a>.</p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS (Biblioteca para el mapa) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <!-- Script para inicializar el mapa y la funcionalidad -->
+    <script>
+        // --- BARRA DE PROGRESO DE SCROLL ---
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('progressBar').style.width = scrolled + '%';
+        });
+
+        // --- CURSOR PERSONALIZADO ---
+        const cursor = document.getElementById('customCursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        document.addEventListener('mousedown', () => {
+            cursor.classList.add('cursor-grow');
+        });
+
+        document.addEventListener('mouseup', () => {
+            cursor.classList.remove('cursor-grow');
+        });
+
+        // Cambiar cursor sobre elementos interactivos
+        const interactiveElements = document.querySelectorAll('a, button, .card, .featured-card');
+        interactiveElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.classList.add('cursor-grow');
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.classList.remove('cursor-grow');
+            });
+        });
+
+        // --- EFECTO PARALLAX EN HERO ---
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.getElementById('heroBackground');
+            parallax.style.transform = `translateY(${scrolled * 0.5}px)`;
+        });
+
+        // --- PARTÍCULAS FLOTANTES ---
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 30;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // Tamaño aleatorio
+                const size = Math.random() * 10 + 5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Posición inicial aleatoria
+                particle.style.left = `${Math.random() * 100}%`;
+                
+                // Retraso de animación aleatorio
+                particle.style.animationDelay = `${Math.random() * 15}s`;
+                
+                // Duración de animación aleatoria
+                const duration = Math.random() * 20 + 10;
+                particle.style.animationDuration = `${duration}s`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // --- CONTADORES ANIMADOS ---
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stat-number');
+            const speed = 200;
+
+            counters.forEach(counter => {
+                const animate = () => {
+                    const value = +counter.getAttribute('data-target');
+                    const data = +counter.innerText;
+                    const time = value / speed;
+
+                    if (data < value) {
+                        counter.innerText = Math.ceil(data + time);
+                        setTimeout(animate, 1);
+                    } else {
+                        counter.innerText = value;
+                    }
+                }
+
+                // Usar Intersection Observer para activar la animación cuando sea visible
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            animate();
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                observer.observe(counter);
+            });
+        }
+
+        // --- TESTIMONIOS ---
+        const testimonials = document.querySelectorAll('.testimonial');
+        const prevBtn = document.getElementById('prevTestimonial');
+        const nextBtn = document.getElementById('nextTestimonial');
+        let currentTestimonial = 0;
+
+        function showTestimonial(index) {
+            testimonials.forEach(testimonial => {
+                testimonial.classList.remove('active');
+            });
+            testimonials[index].classList.add('active');
+        }
+
+        function nextTestimonialFunc() {
+            currentTestimonial = (currentTestimonial + 1) % testimonials.length;
+            showTestimonial(currentTestimonial);
+        }
+
+        function prevTestimonialFunc() {
+            currentTestimonial = (currentTestimonial - 1 + testimonials.length) % testimonials.length;
+            showTestimonial(currentTestimonial);
+        }
+
+        nextBtn.addEventListener('click', nextTestimonialFunc);
+        prevBtn.addEventListener('click', prevTestimonialFunc);
+
+        // Auto-avanzar testimonios
+        setInterval(nextTestimonialFunc, 5000);
+
+        // --- TIMELINE ANIMATION ---
+        const timelineItems = document.querySelectorAll('.timeline-item');
+
+        const timelineObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        timelineItems.forEach(item => {
+            timelineObserver.observe(item);
+        });
+
+        // --- FUNCIONALIDAD MEJORADA PARA LA SECCIÓN DE APLICACIONES ---
+
+        // Búsqueda de mapas
+        const mapSearch = document.getElementById('mapSearch');
+        const searchBtn = document.getElementById('searchBtn');
+        const cards = document.querySelectorAll('.card');
+
+        function filterMaps() {
+            const searchTerm = mapSearch.value.toLowerCase();
+            
+            cards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('p').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'flex';
+                    setTimeout(() => {
+                        card.classList.add('visible');
+                    }, 100);
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        mapSearch.addEventListener('input', filterMaps);
+        searchBtn.addEventListener('click', filterMaps);
+
+        // Cambio de vista (grid/list)
+        const gridView = document.getElementById('gridView');
+        const listView = document.getElementById('listView');
+        const cardGrid = document.querySelector('.card-grid');
+
+        gridView.addEventListener('click', () => {
+            cardGrid.classList.remove('list-view');
+            gridView.classList.add('active');
+            listView.classList.remove('active');
+        });
+
+        listView.addEventListener('click', () => {
+            cardGrid.classList.add('list-view');
+            listView.classList.add('active');
+            gridView.classList.remove('active');
+        });
+
+        // Tabs mejorados
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Desactivar todos los tabs y contenidos
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Activar el tab y contenido seleccionado
+                button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+                
+                // Reiniciar la visibilidad de las tarjetas en el nuevo tab
+                const newTabCards = document.querySelectorAll(`#${tabId} .card`);
+                newTabCards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.classList.add('visible');
+                    }, index * 100);
+                });
+            });
+        });
+
+        // Paginación
+        const paginationBtns = document.querySelectorAll('.pagination-btn');
+
+        paginationBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Eliminar la clase active de todos los botones
+                paginationBtns.forEach(b => b.classList.remove('active'));
+                
+                // Añadir la clase active al botón clickeado (si no es prev/next)
+                if (!btn.classList.contains('prev') && !btn.classList.contains('next')) {
+                    btn.classList.add('active');
+                    
+                    // Aquí iría la lógica para cargar la página correspondiente
+                    // Por ahora, solo simulamos el cambio
+                    console.log(`Cargando página ${btn.textContent}...`);
+                }
+            });
+        });
+
+        // --- HEADER CON EFECTO GLASSMORPHISM AL HACER SCROLL ---
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.main-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // --- ANIMACIÓN DE TARJETAS AL CARGAR ---
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, index * 100);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // --- PRELOAD OPTIMIZADO DE IMÁGENES ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const images = document.querySelectorAll('.card img');
+            
+            images.forEach(img => {
+                const src = img.getAttribute('src');
+                const tempImg = new Image();
+                
+                tempImg.onload = function() {
+                    img.setAttribute('src', src);
+                    img.classList.add('loaded');
+                };
+                
+                tempImg.src = src;
+            });
+
+            // Inicializar partículas
+            createParticles();
+            
+            // Inicializar contadores
+            animateCounters();
+        });
+
+        // --- SMOOTH SCROLL PARA ANCLAS ---
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // --- ANCLAS FLOTANTES ---
+        const floatingNavItems = document.querySelectorAll('.floating-nav-item');
+
+        floatingNavItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = document.querySelector(item.getAttribute('data-target'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // --- CTA FLOTANTE ---
+        const floatingCta = document.getElementById('floatingCta');
+        floatingCta.addEventListener('click', () => {
+            // Aquí podrías abrir un modal o redirigir a una página específica
+            alert('¡Bienvenido al Geoportal de Algarrobo! Esta función te llevará directamente al mapa interactivo.');
+        });
+
+        // --- FUNCIONALIDAD DEL MENÚ MÓVIL ---
+        const menuToggle = document.querySelector('.menu-toggle');
+        const mainNav = document.querySelector('.main-nav');
+
+        menuToggle.addEventListener('click', () => {
+            mainNav.classList.toggle('active');
+        });
+
+    </script>
+
+</body>
+</html>
