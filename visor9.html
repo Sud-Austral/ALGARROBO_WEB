@@ -919,7 +919,34 @@
                 },
                 icon: null,
                 visible: false
-            }];
+            },
+            {
+                id: 'tsunami-zone2',
+                name: 'Punto de Encuentro',
+                url: 'https://raw.githubusercontent.com/Sud-Austral/mapa_insumos2/refs/heads/main/bip/punto_de_encuentro_comuna_gcs/05602.json',
+                type: 'geojson',
+                style: {
+                    color: '#FF9800',
+                    weight: 3,
+                    fillOpacity: 0.3
+                },
+                icon: null,
+                visible: false
+            },
+            {
+                id: 'tsunami-zone3',
+                name: 'Humedales',
+                url: 'https://raw.githubusercontent.com/Sud-Austral/mapa_insumos2/refs/heads/main/humedales/05602.json',
+                type: 'geojson',
+                style: {
+                    color: 'blue',
+                    weight: 3,
+                    fillOpacity: 0.3
+                },
+                icon: null,
+                visible: false
+            },
+        ];
 
         // --- FUNCIÓN PARA CARGAR CAPAS DINÁMICAMENTE ---
         function loadThematicLayers() {
