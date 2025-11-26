@@ -697,6 +697,9 @@
             <button class="tool-button" id="print" title="Imprimir">
                 <i class="fas fa-print"></i>
             </button>
+            <button class="tool-button" id="refresh-layers" title="Actualizar capas">
+                <i class="fas fa-sync-alt"></i>
+            </button>
         </div>
         
         <!-- Barra de Búsqueda -->
@@ -716,7 +719,7 @@
                     <i class="fas fa-chevron-right"></i>
                 </div>
             </div>
-            <div class="panel-content" id="layers-panel-content">
+            <div class="panel-content">
                 <!-- Capas Base -->
                 <div class="layer-group">
                     <div class="layer-group-title">
@@ -739,14 +742,18 @@
                     </div>
                 </div>
                 
-                <!-- Capas Temáticas (se cargarán dinámicamente) -->
-                <div class="layer-group" id="dynamic-layers-group">
+                <!-- Capas Temáticas -->
+                <div class="layer-group">
                     <div class="layer-group-title">
                         <i class="fas fa-layer-group"></i>
                         Capas Temáticas
                     </div>
-                    <div class="layer-group-content" id="dynamic-layers-content">
-                        <!-- Las capas se agregarán aquí dinámicamente -->
+                    <div class="layer-group-content" id="thematic-layers-container">
+                        <!-- Las capas temáticas se cargarán dinámicamente aquí -->
+                        <div class="layer-item">
+                            <div class="loading-spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                            <label class="layer-label">Cargando capas...</label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -793,70 +800,6 @@
 
     <!-- Script para inicializar el mapa y la funcionalidad -->
     <script>
-        // Iconos disponibles
-        let iconosDB = [
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido1.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido2.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido3.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido4.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido5.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido6.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido7.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido8.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido9.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/Solido10.png",    
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador1.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador2.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador3.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador4.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador5.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador6.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador7.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador8.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador9.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/marcador10.png",    
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN1.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN2.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN3.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN4.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN5.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN6.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN7.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN8.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN9.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroN10.png",    
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB1.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB2.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB3.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB4.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB5.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB6.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB7.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB8.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB9.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/centroB10.png",    
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde1.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde2.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde3.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde4.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde5.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde6.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde7.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde8.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde9.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/borde10.png",    
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler1.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler2.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler3.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler4.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler5.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler6.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler7.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler8.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler9.png",
-            "https://github.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/raw/main/AGUAS/Iconos/alfiler10.png"    
-        ];
-
         // --- INICIALIZACIÓN DEL MAPA ---
         // Coordenadas iniciales y nivel de zoom (Algarrobo, Chile)
         const map = L.map('map').setView([-33.3549, -71.6559], 13);
@@ -902,6 +845,7 @@
         const infoPanelHeader = document.getElementById('info-panel-header');
         const headerToggle = document.getElementById('header-toggle');
         const mainHeader = document.getElementById('main-header');
+        const thematicLayersContainer = document.getElementById('thematic-layers-container');
 
         // Toggle del panel de capas
         layersPanelHeader.addEventListener('click', () => {
@@ -960,151 +904,185 @@
             });
         });
 
-        // --- CARGA DINÁMICA DE DATOS DESDE JSON ---
-        // Función para obtener un icono aleatorio de la lista
-        function getRandomIcon() {
-            const index = Math.floor(Math.random() * iconosDB.length);
-            return iconosDB[index];
-        }
+        // --- CONFIGURACIÓN DE CAPAS TEMÁTICAS DINÁMICAS ---
+        // Definición de las capas temáticas con sus URLs y configuración
+        const thematicLayersConfig = [
+            {
+                id: 'tsunami-zone',
+                name: 'Área de Evacuación Tsunami',
+                url: 'https://raw.githubusercontent.com/Sud-Austral/mapa_insumos2/main/bip/area_de_evacuacion_comunas_gcs/05602.json',
+                type: 'geojson',
+                style: {
+                    color: '#FF9800',
+                    weight: 3,
+                    fillOpacity: 0.3
+                },
+                icon: null,
+                visible: false
+            }];
 
-        // Función para crear un icono personalizado
-        function createCustomIcon(iconUrl) {
-            return L.icon({
-                iconUrl: iconUrl,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-        }
-
-        // Función para cargar datos desde el JSON
-        async function loadDataFromJSON() {
+        // --- FUNCIÓN PARA CARGAR CAPAS DINÁMICAMENTE ---
+        function loadThematicLayers() {
+            // Mostrar indicador de carga
             showLoading();
-            try {
-                const response = await fetch('https://raw.githubusercontent.com/Sud-Austral/DATA_MAPA_PUBLIC_V2/main/chile_comunas/05602.json');
-                const data = await response.json();
-                
-                // Procesar los datos y crear capas
-                processGeoJSONData(data);
-                
-                // Actualizar el panel de capas
-                updateLayersPanel();
-                
-                // Ajustar el mapa a los límites de los datos
-                if (data.features && data.features.length > 0) {
-                    const geoJsonLayer = L.geoJSON(data);
-                    map.fitBounds(geoJsonLayer.getBounds());
-                }
-            } catch (error) {
-                console.error('Error al cargar los datos:', error);
-                document.getElementById('feature-info').innerHTML = `
-                    <p>Error al cargar los datos: ${error.message}</p>
-                `;
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Función para procesar datos GeoJSON
-        function processGeoJSONData(data) {
-            // Extraer tipos de geometría únicos para crear capas
-            const geometryTypes = {};
             
-            // Procesar cada feature en el GeoJSON
-            data.features.forEach((feature, index) => {
-                const geometryType = feature.geometry.type;
-                const properties = feature.properties || {};
-                
-                // Crear un nombre para la capa basado en el tipo de geometría y propiedades
-                let layerName = geometryType;
-                if (properties.name) {
-                    layerName = properties.name;
-                } else if (properties.tipo) {
-                    layerName = properties.tipo;
-                } else if (properties.Nombre) {
-                    layerName = properties.Nombre;
-                } else if (properties.Tipo) {
-                    layerName = properties.Tipo;
-                }
-                
-                // Si no existe una capa para este tipo, crearla
-                if (!geometryTypes[layerName]) {
-                    geometryTypes[layerName] = {
-                        type: geometryType,
-                        features: [],
-                        layerGroup: L.layerGroup()
-                    };
-                }
-                
-                // Añadir el feature a la capa correspondiente
-                geometryTypes[layerName].features.push(feature);
-                
-                // Crear el elemento en el mapa
-                let layer;
-                const iconUrl = getRandomIcon();
-                const customIcon = createCustomIcon(iconUrl);
-                
-                // Crear un popup con información de las propiedades
-                let popupContent = '<div class="feature-popup">';
-                for (const [key, value] of Object.entries(properties)) {
-                    popupContent += `<p><strong>${key}:</strong> ${value}</p>`;
-                }
-                popupContent += '</div>';
-                
-                // Crear el elemento según el tipo de geometría
-                if (geometryType === 'Point') {
-                    layer = L.marker(feature.geometry.coordinates.reverse(), { icon: customIcon });
-                } else if (geometryType === 'LineString') {
-                    layer = L.polyline(feature.geometry.coordinates.reverse());
-                } else if (geometryType === 'Polygon') {
-                    layer = L.polygon(feature.geometry.coordinates[0].map(coord => coord.reverse()));
-                } else if (geometryType === 'MultiPolygon') {
-                    const polygons = feature.geometry.coordinates.map(polygon => 
-                        polygon[0].map(coord => coord.reverse())
-                    );
-                    layer = L.polygon(polygons);
-                }
-                
-                if (layer) {
-                    layer.bindPopup(popupContent);
-                    geometryTypes[layerName].layerGroup.addLayer(layer);
-                }
-            });
+            // Limpiar el contenedor de capas temáticas
+            thematicLayersContainer.innerHTML = '';
             
-            // Añadir las capas al mapa y al control de capas
-            for (const [name, layerData] of Object.entries(geometryTypes)) {
-                thematicLayers[name] = layerData.layerGroup;
-            }
-        }
-
-        // Función para actualizar el panel de capas con las capas cargadas dinámicamente
-        function updateLayersPanel() {
-            const dynamicLayersContent = document.getElementById('dynamic-layers-content');
-            dynamicLayersContent.innerHTML = '';
-            
-            for (const [name, layer] of Object.entries(thematicLayers)) {
+            // Cargar cada capa temática
+            thematicLayersConfig.forEach(layerConfig => {
+                // Crear el elemento HTML para la capa
                 const layerItem = document.createElement('div');
                 layerItem.className = 'layer-item';
                 
-                const checkboxId = `layer-${name.replace(/\s+/g, '-').toLowerCase()}`;
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = layerConfig.id;
+                checkbox.className = 'layer-checkbox';
                 
-                layerItem.innerHTML = `
-                    <input type="checkbox" id="${checkboxId}" class="layer-checkbox" data-layer="${name}">
-                    <label for="${checkboxId}" class="layer-label">${name}</label>
-                `;
+                const label = document.createElement('label');
+                label.htmlFor = layerConfig.id;
+                label.className = 'layer-label';
+                label.textContent = layerConfig.name;
                 
-                dynamicLayersContent.appendChild(layerItem);
+                layerItem.appendChild(checkbox);
+                layerItem.appendChild(label);
+                thematicLayersContainer.appendChild(layerItem);
                 
-                // Añadir evento para mostrar/ocultar la capa
-                const checkbox = document.getElementById(checkboxId);
+                // Agregar evento para mostrar/ocultar la capa
                 checkbox.addEventListener('change', function() {
                     if (this.checked) {
-                        map.addLayer(layer);
+                        loadLayer(layerConfig);
                     } else {
-                        map.removeLayer(layer);
+                        if (thematicLayers[layerConfig.name]) {
+                            map.removeLayer(thematicLayers[layerConfig.name]);
+                            delete thematicLayers[layerConfig.name];
+                        }
                     }
                 });
-            }
+                
+                // Si la capa debe estar visible por defecto, cargarla
+                if (layerConfig.visible) {
+                    checkbox.checked = true;
+                    loadLayer(layerConfig);
+                }
+            });
+            
+            // Ocultar indicador de carga
+            hideLoading();
+        }
+
+        // --- FUNCIÓN PARA CARGAR UNA CAPA ESPECÍFICA ---
+        function loadLayer(layerConfig) {
+            showLoading();
+            
+            fetch(layerConfig.url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error al cargar la capa ${layerConfig.name}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    let layer;
+                    
+                    if (layerConfig.type === 'geojson') {
+                        // Crear la capa GeoJSON
+                        layer = L.geoJSON(data, {
+                            style: layerConfig.style,
+                            pointToLayer: function (feature, latlng) {
+                                if (layerConfig.icon) {
+                                    return L.marker(latlng, { icon: layerConfig.icon });
+                                }
+                                return L.marker(latlng);
+                            },
+                            onEachFeature: function (feature, layer) {
+                                // Agregar popup con información de la característica
+                                if (feature.properties) {
+                                    let popupContent = '<div>';
+                                    
+                                    // Si hay un nombre de propiedad, mostrarlo primero
+                                    if (feature.properties.nombre) {
+                                        popupContent += `<h3>${feature.properties.nombre}</h3>`;
+                                    }
+                                    
+                                    // Mostrar todas las propiedades
+                                    for (const key in feature.properties) {
+                                        if (key !== 'nombre') {
+                                            popupContent += `<p><strong>${key}:</strong> ${feature.properties[key]}</p>`;
+                                        }
+                                    }
+                                    
+                                    popupContent += '</div>';
+                                    layer.bindPopup(popupContent);
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Añadir la capa al mapa
+                    layer.addTo(map);
+                    
+                    // Almacenar la capa en el objeto de capas temáticas
+                    thematicLayers[layerConfig.name] = layer;
+                    
+                    // CORRECCIÓN: Usar addOverlay en lugar de addLayer
+                    layerControl.addOverlay(layer, layerConfig.name);
+                    
+                    hideLoading();
+                })
+                .catch(error => {
+                    console.error(error);
+                    hideLoading();
+                    
+                    // Mostrar mensaje de error
+                    const featureInfo = document.getElementById('feature-info');
+                    featureInfo.innerHTML = `
+                        <div class="error-message">
+                            <h3>Error al cargar la capa</h3>
+                            <p>No se pudo cargar la capa ${layerConfig.name}. Por favor, inténtelo de nuevo más tarde.</p>
+                            <p><strong>Detalles:</strong> ${error.message}</p>
+                        </div>
+                    `;
+                    
+                    // Desmarcar el checkbox
+                    document.getElementById(layerConfig.id).checked = false;
+                });
+        }
+
+        // --- FUNCIÓN PARA ACTUALIZAR TODAS LAS CAPAS ---
+        function refreshAllLayers() {
+            // Mostrar indicador de carga
+            showLoading();
+            
+            // Eliminar todas las capas temáticas del mapa
+            Object.keys(thematicLayers).forEach(layerName => {
+                map.removeLayer(thematicLayers[layerName]);
+                delete thematicLayers[layerName];
+            });
+            
+            // CORRECCIÓN: Actualizar el control de capas correctamente
+            layerControl.remove();
+            const newLayerControl = L.control.layers(baseLayers, thematicLayers, {
+                position: 'topright'
+            }).addTo(map);
+            
+            // Desmarcar todos los checkboxes
+            document.querySelectorAll('.layer-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Ocultar indicador de carga
+            hideLoading();
+            
+            // Mostrar mensaje de éxito
+            const featureInfo = document.getElementById('feature-info');
+            featureInfo.innerHTML = `
+                <div class="success-message">
+                    <h3>Capas actualizadas</h3>
+                    <p>Todas las capas han sido actualizadas correctamente.</p>
+                </div>
+            `;
         }
 
         // --- FUNCIONALIDAD DE BARRA DE HERRAMIENTAS ---
@@ -1125,48 +1103,17 @@
             window.print();
         });
         
+        // Herramienta de actualización de capas
+        document.getElementById('refresh-layers').addEventListener('click', () => {
+            refreshAllLayers();
+        });
+        
         // --- FUNCIONALIDAD DE BÚSQUEDA ---
         const searchInput = document.getElementById('search-input');
         const searchButton = document.getElementById('search-button');
         const searchResults = document.getElementById('search-results');
         
-        // Datos de ejemplo para la búsqueda (se actualizarán dinámicamente)
-        let searchLocations = [];
-        
-        // Función para actualizar las ubicaciones de búsqueda desde las capas cargadas
-        function updateSearchLocations() {
-            searchLocations = [];
-            
-            for (const [name, layer] of Object.entries(thematicLayers)) {
-                layer.eachLayer(sublayer => {
-                    if (sublayer instanceof L.Marker) {
-                        const position = sublayer.getLatLng();
-                        const popup = sublayer.getPopup();
-                        let featureName = name;
-                        
-                        if (popup) {
-                            // Intentar extraer un nombre del popup
-                            const popupContent = popup.getContent();
-                            const nameMatch = popupContent.match(/<strong>([^<]+)<\/strong>/);
-                            if (nameMatch && nameMatch[1]) {
-                                const key = nameMatch[1].replace(':', '');
-                                const valueMatch = popupContent.match(new RegExp(`<strong>${key}:</strong> ([^<]+)`));
-                                if (valueMatch && valueMatch[1]) {
-                                    featureName = valueMatch[1];
-                                }
-                            }
-                        }
-                        
-                        searchLocations.push({
-                            name: featureName,
-                            position: [position.lat, position.lng]
-                        });
-                    }
-                });
-            }
-        }
-        
-        // Función para realizar la búsqueda
+        // CORRECCIÓN: Implementar búsqueda de direcciones usando Nominatim
         function performSearch() {
             const query = searchInput.value.toLowerCase().trim();
             
@@ -1175,31 +1122,103 @@
                 return;
             }
             
-            const results = searchLocations.filter(location => 
-                location.name.toLowerCase().includes(query)
-            );
+            // Mostrar indicador de carga
+            showLoading();
             
-            if (results.length > 0) {
-                searchResults.innerHTML = '';
-                results.forEach(result => {
-                    const resultItem = document.createElement('div');
-                    resultItem.className = 'search-result-item';
-                    resultItem.textContent = result.name;
-                    resultItem.addEventListener('click', () => {
-                        map.setView(result.position, 16);
-                        L.marker(result.position).addTo(map)
-                            .bindPopup(`<b>${result.name}</b>`)
-                            .openPopup();
-                        searchResults.style.display = 'none';
-                        searchInput.value = '';
+            // Primero, buscar direcciones usando Nominatim
+            const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=cl`;
+            
+            fetch(nominatimUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const results = [];
+                    
+                    // Procesar resultados de Nominatim
+                    data.forEach(item => {
+                        results.push({
+                            name: item.display_name,
+                            lat: parseFloat(item.lat),
+                            lng: parseFloat(item.lon),
+                            type: 'address'
+                        });
                     });
-                    searchResults.appendChild(resultItem);
+                    
+                    // Buscar en las capas cargadas
+                    Object.keys(thematicLayers).forEach(layerName => {
+                        const layer = thematicLayers[layerName];
+                        
+                        if (layer instanceof L.GeoJSON) {
+                            layer.eachLayer(featureLayer => {
+                                if (featureLayer.feature && featureLayer.feature.properties) {
+                                    // Buscar en todas las propiedades
+                                    for (const key in featureLayer.feature.properties) {
+                                        const value = String(featureLayer.feature.properties[key]).toLowerCase();
+                                        if (value.includes(query)) {
+                                            results.push({
+                                                name: featureLayer.feature.properties.nombre || `${layerName} - ${key}: ${featureLayer.feature.properties[key]}`,
+                                                layer: featureLayer,
+                                                layerName: layerName,
+                                                type: 'feature'
+                                            });
+                                            break; // No necesitamos añadir el mismo resultado varias veces
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    
+                    // Ocultar indicador de carga
+                    hideLoading();
+                    
+                    if (results.length > 0) {
+                        searchResults.innerHTML = '';
+                        results.forEach(result => {
+                            const resultItem = document.createElement('div');
+                            resultItem.className = 'search-result-item';
+                            resultItem.textContent = result.name;
+                            resultItem.addEventListener('click', () => {
+                                if (result.type === 'address') {
+                                    // Centrar el mapa en la dirección
+                                    map.setView([result.lat, result.lng], 16);
+                                    
+                                    // Añadir un marcador temporal
+                                    const tempMarker = L.marker([result.lat, result.lng]).addTo(map);
+                                    tempMarker.bindPopup(result.name).openPopup();
+                                    
+                                    // Eliminar el marcador después de cerrar el popup
+                                    tempMarker.on('popupclose', function() {
+                                        map.removeLayer(tempMarker);
+                                    });
+                                } else if (result.type === 'feature') {
+                                    // Centrar el mapa en el resultado
+                                    if (result.layer.getBounds) {
+                                        map.fitBounds(result.layer.getBounds());
+                                    } else if (result.layer.getLatLng) {
+                                        map.setView(result.layer.getLatLng(), 16);
+                                    }
+                                    
+                                    // Abrir el popup
+                                    result.layer.openPopup();
+                                }
+                                
+                                searchResults.style.display = 'none';
+                                searchInput.value = '';
+                            });
+                            searchResults.appendChild(resultItem);
+                        });
+                        searchResults.style.display = 'block';
+                    } else {
+                        searchResults.innerHTML = '<div class="search-result-item">No se encontraron resultados</div>';
+                        searchResults.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error en la búsqueda:', error);
+                    hideLoading();
+                    searchResults.innerHTML = '<div class="search-result-item">Error al realizar la búsqueda</div>';
+                    searchResults.style.display = 'block';
                 });
-                searchResults.style.display = 'block';
-            } else {
-                searchResults.innerHTML = '<div class="search-result-item">No se encontraron resultados</div>';
-                searchResults.style.display = 'block';
-            }
         }
         
         searchButton.addEventListener('click', performSearch);
@@ -1225,26 +1244,28 @@
             
             // Iterar sobre todas las capas temáticas
             Object.values(thematicLayers).forEach(layerGroup => {
-                layerGroup.eachLayer(layer => {
-                    if (layer instanceof L.Marker || layer instanceof L.Polygon || layer instanceof L.Polyline) {
-                        // Para polígonos y polilíneas
-                        if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
-                            if (layer.getBounds().contains(e.latlng)) {
-                                clickedLayer = true;
-                                layer.openPopup();
+                if (layerGroup instanceof L.GeoJSON) {
+                    layerGroup.eachLayer(layer => {
+                        if (layer instanceof L.Marker || layer instanceof L.Polygon || layer instanceof L.Polyline) {
+                            // Para polígonos y polilíneas
+                            if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+                                if (layer.getBounds().contains(e.latlng)) {
+                                    clickedLayer = true;
+                                    layer.openPopup();
+                                }
+                            }
+                            // Para marcadores
+                            else if (layer instanceof L.Marker) {
+                                const markerLatLng = layer.getLatLng();
+                                const distance = e.latlng.distanceTo(markerLatLng);
+                                if (distance < 100) { // 100 metros de tolerancia
+                                    clickedLayer = true;
+                                    layer.openPopup();
+                                }
                             }
                         }
-                        // Para marcadores
-                        else if (layer instanceof L.Marker) {
-                            const markerLatLng = layer.getLatLng();
-                            const distance = e.latlng.distanceTo(markerLatLng);
-                            if (distance < 100) { // 100 metros de tolerancia
-                                clickedLayer = true;
-                                layer.openPopup();
-                            }
-                        }
-                    }
-                });
+                    });
+                }
             });
             
             // Si no se hizo clic en ninguna capa, mostrar información de coordenadas
@@ -1280,11 +1301,8 @@
         }).addTo(map);
         
         // Actualizar la orientación del norte al mover el mapa
-        map.on('move', function() {
-            const northArrow = document.querySelector('.map-north i');
-            const bearing = map.getBearing();
-            northArrow.style.transform = `rotate(${-bearing}deg)`;
-        });
+        // Se elimina la función que causa el error de getBearing
+        // La brújula ahora permanecerá fija apuntando al norte geográfico
         
         // --- FUNCIONALIDAD DEL MENÚ MÓVIL ---
         const menuToggle = document.querySelector('.menu-toggle');
@@ -1323,18 +1341,18 @@
         
         // --- EVENTO DE CARGA COMPLETA ---
         window.addEventListener('load', () => {
-            // Cargar datos desde JSON
-            loadDataFromJSON().then(() => {
-                // Actualizar ubicaciones de búsqueda
-                updateSearchLocations();
-                
-                // Animación inicial del mapa
-                setTimeout(() => {
-                    map.flyTo([-33.3549, -71.6559], 14, {
-                        duration: 2
-                    });
-                }, 1000);
-            });
+            // Cargar las capas temáticas dinámicamente
+            loadThematicLayers();
+            
+            // Animación inicial del mapa
+            setTimeout(() => {
+                map.flyTo([-33.3549, -71.6559], 14, {
+                    duration: 2
+                });
+            }, 1000);
+            
+            // Ocultar indicador de carga
+            hideLoading();
         });
     </script>
 
