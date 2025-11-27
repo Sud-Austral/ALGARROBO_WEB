@@ -1511,13 +1511,7 @@
                                         popupContent += `<h3 class="popup-title">${feature.properties.nombre}</h3>`;
                                     }
                                     
-                                    // Agregar imagen aleatoria relacionada con Algarrobo
-                                    const randomImageId = Math.floor(Math.random() * 1000);
-                                    popupContent += `<img src="https://picsum.photos/seed/algarrobo${randomImageId}/300/150.jpg" class="popup-image" alt="${feature.properties.nombre || 'Imagen de Algarrobo'}">`;
-                                    
-                                    // Descripción
-                                    popupContent += `<p class="popup-description">Este es un lugar importante en Algarrobo, Chile.</p>`;
-                                    
+                                   
                                     // Mostrar todas las propiedades
                                     popupContent += '<div class="popup-details">';
                                     for (const key in feature.properties) {
