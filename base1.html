@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador GeoJSON - Predios Algarrobo</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Estilos personalizados -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .loader-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .progress-text {
+            font-size: 16px;
+            color: #333;
+            margin-top: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .leaflet-container {
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="loader-container" id="loader">
+        <div class="loader"></div>
+        <div class="progress-text">Cargando datos GeoJSON (10MB)...</div>
+        <div class="progress-text" id="progress">0% completado</div>
+    </div>
+    
+    <div class="info-panel">
+        <h3>Visualizador de Predios</h3>
+        <p>Este mapa muestra los predios de Algarrobo desde un archivo GeoJSON de 10MB.</p>
+        <p id="feature-count">Cargando...</p>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Inicializar el mapa
+        const map = L.map('map').setView([-33.355, -71.658], 11); // Coordenadas aproximadas de Algarrobo
+        
+        // Añadir capa de tiles de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18
+        }).addTo(map);
+        
+        // Función para obtener el color basado en alguna propiedad (puedes ajustar esto)
+        function getColor(feature) {
+            // Puedes cambiar esto según las propiedades de tus datos
+            // Por ejemplo, si tienes una propiedad "tipo" o "uso"
+            return '#3388ff'; // Color azul por defecto
+        }
+        
+        // Función para el estilo de las características
+        function style(feature) {
+            return {
+                fillColor: getColor(feature),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.5
+            };
+        }
+        
+        // Función para resaltar al pasar el mouse
+        function highlightFeature(e) {
+            const layer = e.target;
+            
+            layer.setStyle({
+                weight: 3,
+                color: '#666',
+                fillOpacity: 0.7
+            });
+            
+            layer.bringToFront();
+        }
+        
+        // Función para resetear el resaltado
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+        }
+        
+        // Función para mostrar información al hacer clic
+        function onEachFeature(feature, layer) {
+            if (feature.properties) {
+                let popupContent = "<div>";
+                
+                // Iterar sobre las propiedades y mostrarlas
+                for (const key in feature.properties) {
+                    if (feature.properties.hasOwnProperty(key)) {
+                        popupContent += `<b>${key}:</b> ${feature.properties[key]}<br>`;
+                    }
+                }
+                
+                popupContent += "</div>";
+                layer.bindPopup(popupContent);
+            }
+            
+            // Eventos de mouse
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight
+            });
+        }
+        
+        // Variable para almacenar la capa GeoJSON
+        let geojsonLayer;
+        
+        // Función para cargar el GeoJSON con seguimiento de progreso
+        function loadGeoJSON() {
+            const url = 'https://raw.githubusercontent.com/Sud-Austral/ALGARROBO_WEB/refs/heads/main/data/PREDIOS.json';
+            
+            // Usar fetch con streaming para mostrar el progreso
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('No se pudo cargar el archivo GeoJSON');
+                    }
+                    
+                    const contentLength = response.headers.get('Content-Length');
+                    let loaded = 0;
+                    
+                    return new Response(
+                        new ReadableStream({
+                            start(controller) {
+                                const reader = response.body.getReader();
+                                
+                                function process() {
+                                    reader.read().then(({ done, value }) => {
+                                        if (done) {
+                                            controller.close();
+                                            return;
+                                        }
+                                        
+                                        loaded += value.byteLength;
+                                        const progress = Math.round((loaded / contentLength) * 100);
+                                        document.getElementById('progress').textContent = `${progress}% completado`;
+                                        
+                                        controller.enqueue(value);
+                                        return process();
+                                    });
+                                }
+                                
+                                process();
+                            }
+                        })
+                    );
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Ocultar el cargador
+                    document.getElementById('loader').style.display = 'none';
+                    
+                    // Añadir la capa GeoJSON al mapa
+                    geojsonLayer = L.geoJSON(data, {
+                        style: style,
+                        onEachFeature: onEachFeature
+                    }).addTo(map);
+                    
+                    // Ajustar el mapa a los límites de los datos
+                    map.fitBounds(geojsonLayer.getBounds());
+                    
+                    // Actualizar contador de características
+                    const featureCount = data.features.length;
+                    document.getElementById('feature-count').textContent = `Se cargaron ${featureCount} predios.`;
+                })
+                .catch(error => {
+                    console.error('Error al cargar el GeoJSON:', error);
+                    document.getElementById('loader').innerHTML = `
+                        <div class="error-message">
+                            <p>Error al cargar los datos: ${error.message}</p>
+                            <button onclick="location.reload()">Intentar de nuevo</button>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Cargar el GeoJSON cuando la página esté lista
+        window.onload = loadGeoJSON;
+    </script>
+</body>
+</html>

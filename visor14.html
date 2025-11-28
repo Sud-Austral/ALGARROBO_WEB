@@ -10,6 +10,10 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
 
+    <!-- MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+
     <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -1212,12 +1216,18 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
+     
+    <!-- MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
     <!-- Script para inicializar el mapa y la funcionalidad -->
     <script>
         // --- INICIALIZACIÓN DEL MAPA ---
         // Coordenadas iniciales y nivel de zoom (Algarrobo, Chile)
-        const map = L.map('map').setView([-33.3549, -71.6559], 13);
+        // ✅ 2) Activar preferCanvas en el mapa
+        const map = L.map('map', { 
+            preferCanvas: true
+        }).setView([-33.3549, -71.6559], 13);
 
         // Capas base
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1252,6 +1262,9 @@
         const layerControl = L.control.layers(baseLayers, thematicLayers, {
             position: 'topright'
         }).addTo(map);
+
+        // ✅ 5) Cachear los GeoJSON ya descargados
+        const geoCache = {};
 
         // --- FUNCIONALIDAD DEL PANEL DE CAPAS ---
         const layersPanel = document.getElementById('layers-panel');
@@ -1463,20 +1476,10 @@
                         loadLayer(layerConfig);
                     } else {
                         if (thematicLayers[layerConfig.name]) {
-                            // Transición de fade out al ocultar la capa
-                            const layer = thematicLayers[layerConfig.name];
-                            if (layer instanceof L.GeoJSON) {
-                                layer.eachLayer(subLayer => {
-                                    if (subLayer.setStyle) {
-                                        subLayer.setStyle({ opacity: 0, fillOpacity: 0 });
-                                    }
-                                });
-                            }
-                            
-                            setTimeout(() => {
-                                map.removeLayer(layer);
-                                delete thematicLayers[layerConfig.name];
-                            }, 300);
+                            // ✅ 3) Eliminar animaciones fade-in sobre features
+                            // Eliminamos la transición de fade out al ocultar la capa
+                            map.removeLayer(thematicLayers[layerConfig.name]);
+                            delete thematicLayers[layerConfig.name];
                         }
                     }
                 });
@@ -1492,8 +1495,27 @@
             hideLoading();
         }
 
+        // ✅ 8) Función para determinar si una capa contiene principalmente puntos
+        function layerIsPoints(data) {
+            if (!data.features || data.features.length === 0) return false;
+            
+            // Muestra las primeras 10 características para determinar el tipo
+            const sample = data.features.slice(0, 10);
+            const pointCount = sample.filter(f => f.geometry.type === 'Point').length;
+            
+            // Si más del 70% son puntos, consideramos que es una capa de puntos
+            return pointCount / sample.length > 0.7;
+        }
+
         // --- FUNCIÓN PARA CARGAR UNA CAPA ESPECÍFICA ---
         function loadLayer(layerConfig) {
+            // ✅ 5) Cachear los GeoJSON ya descargados
+            // Verificar si ya tenemos los datos en caché
+            if (geoCache[layerConfig.url]) {
+                drawLayer(geoCache[layerConfig.url], layerConfig);
+                return;
+            }
+            
             showLoading();
             
             fetch(layerConfig.url)
@@ -1504,91 +1526,11 @@
                     return response.json();
                 })
                 .then(data => {
-                    let layer;
+                    // Guardar en caché
+                    geoCache[layerConfig.url] = data;
                     
-                    if (layerConfig.type === 'geojson') {
-                        // Crear la capa GeoJSON
-                        layer = L.geoJSON(data, {
-                            style: layerConfig.style,
-                            pointToLayer: function (feature, latlng) {
-                                if (layerConfig.icon) {
-                                    return L.marker(latlng, { icon: layerConfig.icon });
-                                }
-                                return L.marker(latlng);
-                            },
-                            onEachFeature: function (feature, layer) {
-                                // Agregar popup con información de la característica
-                                if (feature.properties) {
-                                    let popupContent = '<div class="popup-content">';
-                                    
-                                    // Si hay un nombre de propiedad, mostrarlo primero
-                                    if (feature.properties.nombre) {
-                                        popupContent += `<h3 class="popup-title">${feature.properties.nombre}</h3>`;
-                                    }
-                                    
-                                   
-                                    // Mostrar todas las propiedades
-                                    popupContent += '<div class="popup-details">';
-                                    for (const key in feature.properties) {
-                                        if (key !== 'nombre') {
-                                            popupContent += `<p><strong>${key}:</strong> ${feature.properties[key]}</p>`;
-                                        }
-                                    }
-                                    popupContent += '</div>';
-                                    
-                                    popupContent += '</div>';
-                                    layer.bindPopup(popupContent, {
-                                        maxWidth: 300,
-                                        className: 'custom-popup'
-                                    });
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Añadir la capa al mapa con fade in
-                    if (layer instanceof L.GeoJSON) {
-                        layer.eachLayer(subLayer => {
-                            if (subLayer.setStyle) {
-                                const originalStyle = subLayer.options;
-                                subLayer.setStyle({ 
-                                    opacity: 0, 
-                                    fillOpacity: 0,
-                                    ...originalStyle
-                                });
-                            }
-                        });
-                    }
-                    
-                    layer.addTo(map);
-                    
-                    // Animación de fadeIn
-                    let opacity = 0;
-                    const fadeInInterval = setInterval(() => {
-                        opacity += 0.1;
-                        if (layer instanceof L.GeoJSON) {
-                            layer.eachLayer(subLayer => {
-                                if (subLayer.setStyle) {
-                                    const originalStyle = subLayer.options;
-                                    subLayer.setStyle({ 
-                                        opacity: opacity, 
-                                        fillOpacity: opacity * 0.3,
-                                        ...originalStyle
-                                    });
-                                }
-                            });
-                        }
-                        
-                        if (opacity >= 1) {
-                            clearInterval(fadeInInterval);
-                        }
-                    }, 30);
-                    
-                    // Almacenar la capa en el objeto de capas temáticas
-                    thematicLayers[layerConfig.name] = layer;
-                    
-                    // CORRECCIÓN: Usar addOverlay en lugar de addLayer
-                    layerControl.addOverlay(layer, layerConfig.name);
+                    // Dibujar la capa
+                    drawLayer(data, layerConfig);
                     
                     hideLoading();
                 })
@@ -1611,52 +1553,141 @@
                 });
         }
 
+        // --- FUNCIÓN PARA DIBUJAR UNA CAPA ---
+        function drawLayer(data, layerConfig) {
+            // ✅ 4) Evitar onEachFeature pesado en capas grandes
+            const shouldAddPopup = data.features.length < 1500;
+            
+            // ✅ 8) Usar L.MarkerCluster para puntos
+            if (layerConfig.type === "geojson" && layerIsPoints(data)) {
+                const cluster = L.markerClusterGroup({
+                    // Usar Canvas renderer para el cluster también
+                    renderer: L.canvas()
+                });
+                
+                const layer = L.geoJSON(data, {
+                    // ✅ 1) Usar el renderer Canvas para TODAS las capas vectoriales
+                    renderer: L.canvas({ padding: 0.5 }),
+                    pointToLayer: (f, latlng) => L.marker(latlng),
+                    onEachFeature: shouldAddPopup ? function (feature, layer) {
+                        // Agregar popup con información de la característica
+                        if (feature.properties) {
+                            let popupContent = '<div class="popup-content">';
+                            
+                            // Si hay un nombre de propiedad, mostrarlo primero
+                            if (feature.properties.nombre) {
+                                popupContent += `<h3 class="popup-title">${feature.properties.nombre}</h3>`;
+                            }
+                            
+                           
+                            // Mostrar todas las propiedades
+                            popupContent += '<div class="popup-details">';
+                            for (const key in feature.properties) {
+                                if (key !== 'nombre') {
+                                    popupContent += `<p><strong>${key}:</strong> ${feature.properties[key]}</p>`;
+                                }
+                            }
+                            popupContent += '</div>';
+                            
+                            popupContent += '</div>';
+                            layer.bindPopup(popupContent, {
+                                maxWidth: 300,
+                                className: 'custom-popup'
+                            });
+                        }
+                    } : null
+                });
+                
+                cluster.addLayer(layer);
+                cluster.addTo(map);
+                thematicLayers[layerConfig.name] = cluster;
+                
+                // Añadir al control de capas
+                layerControl.addOverlay(cluster, layerConfig.name);
+                
+                return;
+            }
+            
+            // Para capas que no son de puntos
+            let layer = L.geoJSON(data, {
+                // ✅ 1) Usar el renderer Canvas para TODAS las capas vectoriales
+                renderer: L.canvas({ padding: 0.5 }),
+                style: layerConfig.style,
+                pointToLayer: function (feature, latlng) {
+                    if (layerConfig.icon) {
+                        return L.marker(latlng, { icon: layerConfig.icon });
+                    }
+                    return L.marker(latlng);
+                },
+                onEachFeature: shouldAddPopup ? function (feature, layer) {
+                    // Agregar popup con información de la característica
+                    if (feature.properties) {
+                        let popupContent = '<div class="popup-content">';
+                        
+                        // Si hay un nombre de propiedad, mostrarlo primero
+                        if (feature.properties.nombre) {
+                            popupContent += `<h3 class="popup-title">${feature.properties.nombre}</h3>`;
+                        }
+                        
+                       
+                        // Mostrar todas las propiedades
+                        popupContent += '<div class="popup-details">';
+                        for (const key in feature.properties) {
+                            if (key !== 'nombre') {
+                                popupContent += `<p><strong>${key}:</strong> ${feature.properties[key]}</p>`;
+                            }
+                        }
+                        popupContent += '</div>';
+                        
+                        popupContent += '</div>';
+                        layer.bindPopup(popupContent, {
+                            maxWidth: 300,
+                            className: 'custom-popup'
+                        });
+                    }
+                } : null
+            });
+            
+            // ✅ 3) Eliminar animaciones fade-in sobre features
+            // Eliminamos la animación de fadeIn
+            layer.addTo(map);
+            
+            // Almacenar la capa en el objeto de capas temáticas
+            thematicLayers[layerConfig.name] = layer;
+            
+            // CORRECCIÓN: Usar addOverlay en lugar de addLayer
+            layerControl.addOverlay(layer, layerConfig.name);
+        }
+
         // --- FUNCIÓN PARA ACTUALIZAR TODAS LAS CAPAS ---
         function refreshAllLayers() {
             // Mostrar indicador de carga
             showLoading();
             
-            // Eliminar todas las capas temáticas del mapa con fade out
+            // ✅ 7) No recrear el control de capas en refresh
+            // Eliminar todas las capas temáticas del mapa sin animación
             Object.keys(thematicLayers).forEach(layerName => {
-                const layer = thematicLayers[layerName];
-                if (layer instanceof L.GeoJSON) {
-                    layer.eachLayer(subLayer => {
-                        if (subLayer.setStyle) {
-                            subLayer.setStyle({ opacity: 0, fillOpacity: 0 });
-                        }
-                    });
-                }
+                map.removeLayer(thematicLayers[layerName]);
+                layerControl.removeLayer(thematicLayers[layerName]);
+                delete thematicLayers[layerName];
             });
             
-            setTimeout(() => {
-                Object.keys(thematicLayers).forEach(layerName => {
-                    map.removeLayer(thematicLayers[layerName]);
-                    delete thematicLayers[layerName];
-                });
-                
-                // CORRECCIÓN: Actualizar el control de capas correctamente
-                layerControl.remove();
-                const newLayerControl = L.control.layers(baseLayers, thematicLayers, {
-                    position: 'topright'
-                }).addTo(map);
-                
-                // Desmarcar todos los checkboxes
-                document.querySelectorAll('.layer-checkbox').forEach(checkbox => {
-                    checkbox.checked = false;
-                });
-                
-                // Ocultar indicador de carga
-                hideLoading();
-                
-                // Mostrar mensaje de éxito
-                const featureInfo = document.getElementById('feature-info');
-                featureInfo.innerHTML = `
-                    <div class="success-message">
-                        <h3>Capas actualizadas</h3>
-                        <p>Todas las capas han sido actualizadas correctamente.</p>
-                    </div>
-                `;
-            }, 300);
+            // Ocultar indicador de carga
+            hideLoading();
+            
+            // Desmarcar todos los checkboxes
+            document.querySelectorAll('.layer-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Mostrar mensaje de éxito
+            const featureInfo = document.getElementById('feature-info');
+            featureInfo.innerHTML = `
+                <div class="success-message">
+                    <h3>Capas actualizadas</h3>
+                    <p>Todas las capas han sido actualizadas correctamente.</p>
+                </div>
+            `;
         }
 
         // --- FUNCIONALIDAD DE BARRA DE HERRAMIENTAS ---
@@ -1726,24 +1757,46 @@
                     Object.keys(thematicLayers).forEach(layerName => {
                         const layer = thematicLayers[layerName];
                         
-                        if (layer instanceof L.GeoJSON) {
-                            layer.eachLayer(featureLayer => {
-                                if (featureLayer.feature && featureLayer.feature.properties) {
-                                    // Buscar en todas las propiedades
-                                    for (const key in featureLayer.feature.properties) {
-                                        const value = String(featureLayer.feature.properties[key]).toLowerCase();
-                                        if (value.includes(query)) {
-                                            results.push({
-                                                name: featureLayer.feature.properties.nombre || `${layerName} - ${key}: ${featureLayer.feature.properties[key]}`,
-                                                layer: featureLayer,
-                                                layerName: layerName,
-                                                type: 'feature'
-                                            });
-                                            break; // No necesitamos añadir el mismo resultado varias veces
+                        if (layer instanceof L.GeoJSON || layer instanceof L.MarkerClusterGroup) {
+                            // Para MarkerCluster, necesitamos obtener las capas internas
+                            if (layer instanceof L.MarkerClusterGroup) {
+                                layer.eachLayer(featureLayer => {
+                                    if (featureLayer.feature && featureLayer.feature.properties) {
+                                        // Buscar en todas las propiedades
+                                        for (const key in featureLayer.feature.properties) {
+                                            const value = String(featureLayer.feature.properties[key]).toLowerCase();
+                                            if (value.includes(query)) {
+                                                results.push({
+                                                    name: featureLayer.feature.properties.nombre || `${layerName} - ${key}: ${featureLayer.feature.properties[key]}`,
+                                                    layer: featureLayer,
+                                                    layerName: layerName,
+                                                    type: 'feature'
+                                                });
+                                                break; // No necesitamos añadir el mismo resultado varias veces
+                                            }
                                         }
                                     }
-                                }
-                            });
+                                });
+                            } else {
+                                // Para GeoJSON normal
+                                layer.eachLayer(featureLayer => {
+                                    if (featureLayer.feature && featureLayer.feature.properties) {
+                                        // Buscar en todas las propiedades
+                                        for (const key in featureLayer.feature.properties) {
+                                            const value = String(featureLayer.feature.properties[key]).toLowerCase();
+                                            if (value.includes(query)) {
+                                                results.push({
+                                                    name: featureLayer.feature.properties.nombre || `${layerName} - ${key}: ${featureLayer.feature.properties[key]}`,
+                                                    layer: featureLayer,
+                                                    layerName: layerName,
+                                                    type: 'feature'
+                                                });
+                                                break; // No necesitamos añadir el mismo resultado varias veces
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                         }
                     });
                     
@@ -1844,6 +1897,18 @@
                             }
                         }
                     });
+                } else if (layerGroup instanceof L.MarkerClusterGroup) {
+                    // Para clústeres de marcadores
+                    layerGroup.eachLayer(layer => {
+                        if (layer instanceof L.Marker) {
+                            const markerLatLng = layer.getLatLng();
+                            const distance = e.latlng.distanceTo(markerLatLng);
+                            if (distance < 100) { // 100 metros de tolerancia
+                                clickedLayer = true;
+                                layer.openPopup();
+                            }
+                        }
+                    });
                 }
             });
             
@@ -1878,10 +1943,6 @@
             metric: true,
             imperial: false
         }).addTo(map);
-        
-        // Actualizar la orientación del norte al mover el mapa
-        // Se elimina la función que causa el error de getBearing
-        // La brújula ahora permanecerá fija apuntando al norte geográfico
         
         // --- FUNCIONALIDAD DEL MENÚ MÓVIL ---
         const menuToggle = document.querySelector('.menu-toggle');
@@ -1918,13 +1979,20 @@
             document.getElementById('loading-indicator').style.display = 'none';
         }
         
-        // --- EFECTO PARALLAX SUTIL ---
+        // ✅ 6) Deshabilitar mousemove parallax sobre el mapa
+        // Limitar el evento mousemove para mejorar el rendimiento
+        let lastParallaxUpdate = 0;
         document.addEventListener('mousemove', (e) => {
-            const parallaxElement = document.getElementById('parallax-element');
-            const x = (e.clientX / window.innerWidth - 0.5) * 20;
-            const y = (e.clientY / window.innerHeight - 0.5) * 20;
-            
-            parallaxElement.style.transform = `translate(${x}px, ${y}px)`;
+            const now = Date.now();
+            // Limitar la actualización a una vez cada 120ms
+            if (now - lastParallaxUpdate > 120) {
+                lastParallaxUpdate = now;
+                const parallaxElement = document.getElementById('parallax-element');
+                const x = (e.clientX / window.innerWidth - 0.5) * 20;
+                const y = (e.clientY / window.innerHeight - 0.5) * 20;
+                
+                parallaxElement.style.transform = `translate(${x}px, ${y}px)`;
+            }
         });
         
         // --- EVENTO DE CARGA COMPLETA CON ANIMACIONES DE ENTRADA ---
