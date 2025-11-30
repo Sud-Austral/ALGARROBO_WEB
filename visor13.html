@@ -1419,9 +1419,10 @@
                 url: 'https://raw.githubusercontent.com/Sud-Austral/ALGARROBO_WEB/refs/heads/main/data/PREDIOS.json',
                 type: 'geojson',
                 style: {
-                    color: 'blue',
-                    weight: 3,
-                    fillOpacity: 0.3
+                color: "#6a5acd",
+                weight: 2,
+                fillColor: "#c3b5ff",
+                fillOpacity: 0.35
                 },
                 icon: null,
                 visible: false
@@ -1694,8 +1695,8 @@
         
         // CORRECCIÓN: Implementar búsqueda de direcciones usando Nominatim
         function performSearch() {
-            const query = searchInput.value.toLowerCase().trim();
-            
+            const query = searchInput.value.toLowerCase().trim() + ",Algarrobo";
+            //console.log(query)
             if (query === '') {
                 searchResults.style.display = 'none';
                 return;
